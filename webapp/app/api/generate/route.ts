@@ -213,13 +213,28 @@ function recipeFocusSentence(focus: RecipeImageFocus): string {
   return "Show an in-progress prep/ingredient action moment (adding, pouring, layering, mixing), before final serving; avoid finished plated dish.";
 }
 
-function recipeOverlayHeadline(title: string): string {
+function recipeMainIngredient(title: string): string {
   const t = title.toLowerCase();
-  if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "Slow Cooker, Big Flavor";
-  if (/\b(casserole|bake|lasagna|pie)\b/.test(t)) return "Layer, Bake, Dinner Done";
-  if (/\b(soup|stew|chili)\b/.test(t)) return "Dump, Simmer, Cozy Bowl";
-  if (/\b(chicken|beef|pork|turkey|meat)\b/.test(t)) return "Pour, Cook, Comfort Dinner";
-  return "Quick Prep, Cozy Dinner";
+  if (/\bbeef\b/.test(t)) return "beef";
+  if (/\bchicken\b/.test(t)) return "chicken";
+  if (/\bpork\b/.test(t)) return "pork";
+  if (/\bturkey\b/.test(t)) return "turkey";
+  if (/\bsausage\b/.test(t)) return "sausage";
+  if (/\bpotato(?:es)?\b/.test(t)) return "potatoes";
+  if (/\brice\b/.test(t)) return "rice";
+  return "dinner";
+}
+
+function recipeOverlaySentence(title: string): string {
+  const count = ingredientCountPhrase(title);
+  const ingredient = recipeMainIngredient(title);
+  const action = inferRecipeAction(title).toLowerCase();
+
+  if (ingredient === "beef" || ingredient === "chicken" || ingredient === "pork" || ingredient === "turkey" || ingredient === "sausage") {
+    return `${action.charAt(0).toUpperCase()}${action.slice(1)} sliced onions and ${count} over ${ingredient} for a cozy dinner everyone asks for again`;
+  }
+
+  return `${action.charAt(0).toUpperCase()}${action.slice(1)} ${count} into this easy bake for a cozy supper everyone asks for again`;
 }
 
 function normalizePromptText(text: string): string {
@@ -243,9 +258,11 @@ function enforceVisualProfile(
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
     .replace(/\bno text overlay\b\.?/gi, "")
+    .replace(/\bhigh contrast white text on dark translucent box\b/gi, "")
+    .replace(/\bdark translucent box\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
-  const overlayHeadline = recipeOverlayHeadline(title);
+  const overlaySentence = recipeOverlaySentence(title);
 
   const parts: string[] = [cleaned];
 
@@ -261,8 +278,10 @@ function enforceVisualProfile(
         .trim();
       parts[0] = cleaned;
       parts.push(
-        `Optional overlay mode only: one short action-first headline line (3-7 words), high contrast text, place near top area, keep food photo dominant. Do not use the recipe title as overlay text. Suggested overlay text: "${overlayHeadline}".`
+        `Recipe overlay spec: use one medium hook sentence (10-18 words) with ingredient-count and payoff language; bold black sans-serif text on a white rounded rectangle banner; place at top or upper-middle; keep food photo dominant and readable on mobile.`
       );
+      parts.push(`Do not use the recipe title as overlay text.`);
+      parts.push(`Render this exact overlay text: "${overlaySentence}".`);
     } else {
       parts.push("No text overlay.");
     }

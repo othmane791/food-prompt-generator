@@ -27,10 +27,8 @@ Hard rules:
 9) Do not use emojis except the CTA line emoji.
 10) No hashtags unless explicitly requested.
 11) For text overlay prompt, include explicit overlay spec:
-   - large bold sans-serif
-   - high contrast
-   - 1-2 lines
-   - centered or upper-middle
+   - recipe: medium hook sentence (not short title) with ingredient-count/payoff language, bold black sans-serif on white rounded rectangle banner, top/upper-middle
+   - article: bold light sans-serif on dark translucent box, centered/upper-middle, 1-2 lines
    - no logos/watermarks
 12) For recipe posts, strictly honor "recipe_image_focus":
    - if "step_or_ingredient": show in-progress prep/action (adding, pouring, layering, mixing), avoid finished plated dish.
@@ -40,9 +38,10 @@ Hard rules:
    - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
 14) For recipe text_overlay_prompt:
    - keep it optional/minority style
-   - one short line only
+   - use one medium hook sentence (10-18 words), not a short title
    - do not use the recipe title as overlay text
-   - use an action-first prep hook instead (3-7 words)
+   - include ingredient-count and payoff language
+   - include practical prep/action framing
    - keep food photo dominant
 15) For article text_overlay_prompt:
    - default to bold white/light text on dark translucent box
