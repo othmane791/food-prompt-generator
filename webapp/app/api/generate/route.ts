@@ -186,6 +186,21 @@ function houseStyleBodies(type: InputType, title: string): string[] {
   ];
 }
 
+function trafficHooks(type: InputType, title: string): string[] {
+  const topic = topicFromTitle(title, 5);
+  if (type === "recipe") {
+    return [
+      `Would you try this ${topic} shortcut tonight?`,
+      `This ${topic} trick is getting a lot of attention`
+    ];
+  }
+
+  return [
+    `Most people get this wrong about ${topic}. Do you?`,
+    `I thought this was normal about ${topic}, but I was wrong`
+  ];
+}
+
 function applyRecipeFocus(prompt: string, focus: RecipeImageFocus): string {
   const cleaned = (prompt || "").replace(/\s+/g, " ").trim();
   if (focus === "final_dish") {
@@ -242,12 +257,13 @@ function coerceGenerated(
   while (captions.length < 3) captions.push(fallbackCaption);
   const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 14));
   const houseBodies = houseStyleBodies(type, title).map((c) => clampWords(normalizeCaptionBody(c), 14));
+  const trafficBodies = trafficHooks(type, title).map((c) => clampWords(normalizeCaptionBody(c), 14));
 
-  const captionOnlyOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks]).slice(0, 3);
-  while (captionOnlyOptions.length < 3) captionOnlyOptions.push(clampWords(normalizeCaptionBody(fallbackCaption), 14));
+  const captionOnlyOptions = uniqueNonEmpty([...trafficBodies, ...shortHooks, ...shortCaptionBodies]).slice(0, 2);
+  while (captionOnlyOptions.length < 2) captionOnlyOptions.push(clampWords(normalizeCaptionBody(fallbackCaption), 14));
 
-  const mergedCaptionOptions = uniqueNonEmpty(captionOnlyOptions.map((body) => buildMergedCaption(body, type))).slice(0, 3);
-  while (mergedCaptionOptions.length < 3) {
+  const mergedCaptionOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies].map((body) => buildMergedCaption(body, type))).slice(0, 2);
+  while (mergedCaptionOptions.length < 2) {
     const extra = captionOnlyOptions[mergedCaptionOptions.length] || fallbackCaption;
     mergedCaptionOptions.push(buildMergedCaption(extra, type));
   }
