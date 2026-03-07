@@ -4,6 +4,7 @@ import { FormEvent, useMemo, useState } from "react";
 
 type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
+type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 
 type ApiSuccess = {
   input: {
@@ -11,6 +12,7 @@ type ApiSuccess = {
     title: string;
     link: string | null;
     aspectRatio?: AspectRatio;
+    recipeImageFocus?: RecipeImageFocus | null;
   };
   generated: {
     resolved_type?: string;
@@ -25,6 +27,7 @@ type ApiSuccess = {
 export default function HomePage() {
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
+  const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -46,7 +49,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, title, link, aspectRatio })
+        body: JSON.stringify({ type, title, link, aspectRatio, recipeImageFocus })
       });
 
       const data = await res.json();
@@ -97,6 +100,19 @@ export default function HomePage() {
             </select>
           </label>
 
+          {type === "recipe" ? (
+            <label>
+              Recipe Image Focus
+              <select
+                value={recipeImageFocus}
+                onChange={(e) => setRecipeImageFocus(e.target.value as RecipeImageFocus)}
+              >
+                <option value="step_or_ingredient">Step / Ingredient (Recommended)</option>
+                <option value="final_dish">Final Dish</option>
+              </select>
+            </label>
+          ) : null}
+
           <label>
             Title
             <input
@@ -126,7 +142,10 @@ export default function HomePage() {
       {result ? (
         <section className="result-grid">
           <article className="panel span-2">
-            <h2>Image Prompts ({result.input.aspectRatio || "2:3"})</h2>
+            <h2>
+              Image Prompts ({result.input.aspectRatio || "2:3"}
+              {result.input.recipeImageFocus ? `, ${result.input.recipeImageFocus}` : ""})
+            </h2>
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">
                 <div className="row-head">

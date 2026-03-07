@@ -5,6 +5,7 @@ Web app that generates:
 - 3 hook options
 - 3 caption options with recipe/article CTA style
 - selectable aspect ratio per request (`2:3` or `4:5`)
+- recipe image focus control (`step_or_ingredient` or `final_dish`)
 
 ## 1) Run Locally
 

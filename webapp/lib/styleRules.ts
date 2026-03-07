@@ -30,6 +30,9 @@ Hard rules:
    - 1-2 lines
    - centered or upper-middle
    - no logos/watermarks
+12) For recipe posts, strictly honor "recipe_image_focus":
+   - if "step_or_ingredient": show in-progress prep/action (adding, pouring, layering, mixing), avoid finished plated dish.
+   - if "final_dish": show cooked finished dish presentation.
 
 Output must be valid JSON only (no markdown), with this shape:
 {

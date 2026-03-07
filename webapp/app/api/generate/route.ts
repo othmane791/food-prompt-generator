@@ -3,12 +3,14 @@ import { STYLE_RULES } from "@/lib/styleRules";
 
 type InputType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
+type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 
 type GeneratePayload = {
   type?: InputType;
   title?: string;
   link?: string;
   aspectRatio?: AspectRatio;
+  recipeImageFocus?: RecipeImageFocus;
 };
 
 type LinkExtract = {
@@ -32,6 +34,10 @@ function normalizeType(value?: string): InputType {
 
 function normalizeAspectRatio(value?: string): AspectRatio {
   return value === "4:5" ? "4:5" : "2:3";
+}
+
+function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {
+  return value === "final_dish" ? "final_dish" : "step_or_ingredient";
 }
 
 function aspectLabel(ratio: AspectRatio): string {
@@ -83,6 +89,7 @@ function buildUserPrompt(input: {
   link?: string;
   linkData?: LinkExtract;
   aspectRatio: AspectRatio;
+  recipeImageFocus: RecipeImageFocus;
 }): string {
   return JSON.stringify(
     {
@@ -93,6 +100,7 @@ function buildUserPrompt(input: {
       source_preview: input.linkData || null,
       aspect_ratio: input.aspectRatio,
       aspect_format: aspectLabel(input.aspectRatio),
+      recipe_image_focus: input.recipeImageFocus,
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
         output_language: "English",
@@ -114,7 +122,21 @@ function normalizeCaption(caption: string, type: InputType): string {
   return `${body}.\n${cta}`;
 }
 
-function coerceGenerated(raw: unknown, type: InputType, title: string, ratio: AspectRatio): GeneratedShape {
+function applyRecipeFocus(prompt: string, focus: RecipeImageFocus): string {
+  const cleaned = (prompt || "").replace(/\s+/g, " ").trim();
+  if (focus === "final_dish") {
+    return `${cleaned} Show a finished cooked dish presentation, ready to serve.`;
+  }
+  return `${cleaned} Show an in-progress prep/ingredient action moment (adding, pouring, layering, mixing), before final serving; avoid finished plated dish.`;
+}
+
+function coerceGenerated(
+  raw: unknown,
+  type: InputType,
+  title: string,
+  ratio: AspectRatio,
+  recipeImageFocus: RecipeImageFocus
+): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
 
@@ -141,7 +163,14 @@ function coerceGenerated(raw: unknown, type: InputType, title: string, ratio: As
       name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
       prompt: (p.prompt || "").trim()
     }))
-    .filter((p) => p.prompt);
+    .filter((p) => p.prompt)
+    .map((p) => {
+      if (type !== "recipe") return p;
+      return {
+        ...p,
+        prompt: applyRecipeFocus(p.prompt, recipeImageFocus)
+      };
+    });
 
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 3) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
@@ -208,6 +237,7 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as GeneratePayload;
     const type = normalizeType(body.type);
     const ratio = normalizeAspectRatio(body.aspectRatio);
+    const recipeImageFocus = normalizeRecipeImageFocus(body.recipeImageFocus);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -226,11 +256,12 @@ export async function POST(req: NextRequest) {
       title: resolvedTitle,
       link: link || undefined,
       linkData,
-      aspectRatio: ratio
+      aspectRatio: ratio,
+      recipeImageFocus
     });
 
     const generatedRaw = await callOpenAI(STYLE_RULES, userPrompt);
-    const generated = coerceGenerated(generatedRaw, type, resolvedTitle, ratio);
+    const generated = coerceGenerated(generatedRaw, type, resolvedTitle, ratio, recipeImageFocus);
 
     return NextResponse.json(
       {
@@ -238,7 +269,8 @@ export async function POST(req: NextRequest) {
           type,
           title: resolvedTitle,
           link: link || null,
-          aspectRatio: ratio
+          aspectRatio: ratio,
+          recipeImageFocus: type === "recipe" ? recipeImageFocus : null
         },
         generated
       },
