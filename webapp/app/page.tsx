@@ -27,8 +27,8 @@ type ApiSuccess = {
 };
 
 export default function HomePage() {
-  const MAX_MERGED_OPTIONS = 2;
-  const MAX_CAPTION_ONLY_OPTIONS = 2;
+  const MAX_MERGED_OPTIONS = 3;
+  const MAX_CAPTION_ONLY_OPTIONS = 0;
 
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
@@ -197,9 +197,6 @@ export default function HomePage() {
               </div>
             ))}
 
-            {captionOnlyOptions.length > 0 ? (
-              <p className="subhead">Caption Only (Short)</p>
-            ) : null}
             {captionOnlyOptions.map((c, idx) => (
               <div key={`caption-only-${idx}`} className="copy-item">
                 <div className="copy-label">Caption-only {idx + 1}</div>
