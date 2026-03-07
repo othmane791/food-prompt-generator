@@ -41,6 +41,8 @@ Hard rules:
 14) For recipe text_overlay_prompt:
    - keep it optional/minority style
    - one short line only
+   - do not use the recipe title as overlay text
+   - use an action-first prep hook instead (3-7 words)
    - keep food photo dominant
 15) For article text_overlay_prompt:
    - default to bold white/light text on dark translucent box

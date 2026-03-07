@@ -159,31 +159,51 @@ function uniqueNonEmpty(values: string[]): string[] {
   return out;
 }
 
-function topicFromTitle(title: string, maxWords = 5): string {
-  const cleaned = normalizeCaptionBody(title)
-    .replace(/\b(recipe|article|how to|easy|quickly|safely)\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "this";
-  return words.slice(0, maxWords).join(" ").toLowerCase();
+function extractIngredientCount(title: string): number | null {
+  const match = title.match(/\b(?:just|only|with)?\s*(\d{1,2})\s+ingredients?\b/i);
+  if (!match) return null;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function houseStyleBodies(type: InputType, title: string): string[] {
-  const topic = topicFromTitle(title, 5);
-  if (type === "recipe") {
-    return [
-      `My family asks for ${topic} on repeat`,
-      `Only a few ingredients and ${topic} turns out so cozy`,
-      `This no-fuss ${topic} tastes like comfort food`
-    ];
-  }
+function ingredientCountPhrase(title: string): string {
+  const count = extractIngredientCount(title);
+  if (count) return `just ${count} ingredients`;
+  return "a few pantry ingredients";
+}
 
+function inferRecipeAction(title: string): string {
+  const t = title.toLowerCase();
+  if (/\b(soup|stew|chili|broth)\b/.test(t)) return "Dump";
+  if (/\b(casserole|bake|lasagna|pie)\b/.test(t)) return "Layer";
+  if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "Add";
+  if (/\b(chicken|beef|pork|turkey|meat)\b/.test(t)) return "Pour";
+  return "Mix";
+}
+
+function buildRecipePatternCaptionBodies(title: string): string[] {
+  const action = inferRecipeAction(title);
+  const count = ingredientCountPhrase(title);
   return [
-    `I had no idea this about ${topic} until now`,
-    `Most people get this wrong about ${topic}`,
-    `I thought this was normal, but I was wrong about ${topic}`
+    `${action} ${count} together for a cozy dinner that feels homemade`,
+    "Old-school comfort flavor with simple steps and almost no prep",
+    "My family kept asking for seconds because this one is so easy"
   ];
+}
+
+function houseStyleBodies(type: InputType): string[] {
+  if (type === "recipe") {
+    return [];
+  }
+  return [
+    "I had no idea this until now",
+    "Most people still get this wrong",
+    "I thought this was normal, but I was wrong"
+  ];
+}
+
+function buildRecipePatternCaptions(title: string): string[] {
+  return buildRecipePatternCaptionBodies(title).map((body) => normalizeCaption(body, "recipe"));
 }
 
 function recipeFocusSentence(focus: RecipeImageFocus): string {
@@ -191,6 +211,15 @@ function recipeFocusSentence(focus: RecipeImageFocus): string {
     return "Show a finished cooked dish presentation, ready to serve.";
   }
   return "Show an in-progress prep/ingredient action moment (adding, pouring, layering, mixing), before final serving; avoid finished plated dish.";
+}
+
+function recipeOverlayHeadline(title: string): string {
+  const t = title.toLowerCase();
+  if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "Slow Cooker, Big Flavor";
+  if (/\b(casserole|bake|lasagna|pie)\b/.test(t)) return "Layer, Bake, Dinner Done";
+  if (/\b(soup|stew|chili)\b/.test(t)) return "Dump, Simmer, Cozy Bowl";
+  if (/\b(chicken|beef|pork|turkey|meat)\b/.test(t)) return "Pour, Cook, Comfort Dinner";
+  return "Quick Prep, Cozy Dinner";
 }
 
 function normalizePromptText(text: string): string {
@@ -208,13 +237,15 @@ function enforceVisualProfile(
   promptName: string,
   type: InputType,
   ratioText: string,
-  recipeImageFocus: RecipeImageFocus
+  recipeImageFocus: RecipeImageFocus,
+  title: string
 ): string {
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
     .replace(/\bno text overlay\b\.?/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  const overlayHeadline = recipeOverlayHeadline(title);
 
   const parts: string[] = [cleaned];
 
@@ -224,8 +255,13 @@ function enforceVisualProfile(
     );
     parts.push(recipeFocusSentence(recipeImageFocus));
     if (name.includes("text_overlay")) {
+      cleaned = cleaned
+        .replace(/\b(text|headline)\s*:\s*["'][^"']*["']/gi, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+      parts[0] = cleaned;
       parts.push(
-        "Optional overlay mode only: one short headline line, high contrast text, place near top area, keep food photo dominant."
+        `Optional overlay mode only: one short action-first headline line (3-7 words), high contrast text, place near top area, keep food photo dominant. Do not use the recipe title as overlay text. Suggested overlay text: "${overlayHeadline}".`
       );
     } else {
       parts.push("No text overlay.");
@@ -285,7 +321,7 @@ function coerceGenerated(
     .map((p) => {
       return {
         ...p,
-        prompt: enforceVisualProfile(p.prompt, p.name, type, ratioText, recipeImageFocus)
+        prompt: enforceVisualProfile(p.prompt, p.name, type, ratioText, recipeImageFocus, title)
       };
     });
 
@@ -293,16 +329,15 @@ function coerceGenerated(
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
   while (captions.length < 3) captions.push(fallbackCaption);
   const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 14));
-  const houseBodies = houseStyleBodies(type, title).map((c) => clampWords(normalizeCaptionBody(c), 14));
+  const houseBodies = houseStyleBodies(type).map((c) => clampWords(normalizeCaptionBody(c), 14));
 
-  const captionOnlyOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks]).slice(0, 2);
-  while (captionOnlyOptions.length < 2) captionOnlyOptions.push(clampWords(normalizeCaptionBody(fallbackCaption), 14));
-
-  const mergedCaptionOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => buildMergedCaption(body, type))).slice(0, 2);
-  while (mergedCaptionOptions.length < 2) {
-    const extra = captionOnlyOptions[mergedCaptionOptions.length] || fallbackCaption;
-    mergedCaptionOptions.push(buildMergedCaption(extra, type));
+  const defaultMergedOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => buildMergedCaption(body, type))).slice(0, 3);
+  while (defaultMergedOptions.length < 3) {
+    defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 14), type));
   }
+
+  const mergedCaptionOptions = type === "recipe" ? buildRecipePatternCaptions(title) : defaultMergedOptions;
+  const captionOnlyOptions: string[] = [];
 
   return {
     resolved_type: type,

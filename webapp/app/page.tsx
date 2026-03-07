@@ -29,6 +29,11 @@ type ApiSuccess = {
 export default function HomePage() {
   const MAX_MERGED_OPTIONS = 3;
   const MAX_CAPTION_ONLY_OPTIONS = 0;
+  const RECIPE_FAMILY_LABELS = [
+    "Action + Ingredient Count + Payoff",
+    "Comfort/Nostalgia + Simplicity + Payoff",
+    "Social Proof/Family Reaction + Ease + Payoff"
+  ];
 
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
@@ -183,7 +188,9 @@ export default function HomePage() {
             ) : null}
             {mergedCaptionOptions.map((m, idx) => (
               <div key={`merged-${idx}`} className="copy-item">
-                <div className="copy-label">Merged {idx + 1}</div>
+                <div className="copy-label">
+                  {result.input.type === "recipe" ? RECIPE_FAMILY_LABELS[idx] || `Recipe Caption ${idx + 1}` : `Merged ${idx + 1}`}
+                </div>
                 <button
                   className="copy-btn"
                   type="button"
