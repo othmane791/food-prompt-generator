@@ -135,7 +135,7 @@ function normalizeCaptionBody(text: string): string {
   return cleaned;
 }
 
-function clampWords(text: string, maxWords = 14): string {
+function clampWords(text: string, maxWords = 15): string {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return text;
   return words.slice(0, maxWords).join(" ");
@@ -157,6 +157,33 @@ function uniqueNonEmpty(values: string[]): string[] {
     out.push(v);
   }
   return out;
+}
+
+function topicFromTitle(title: string, maxWords = 5): string {
+  const cleaned = normalizeCaptionBody(title)
+    .replace(/\b(recipe|article|how to|easy|quickly|safely)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "this";
+  return words.slice(0, maxWords).join(" ").toLowerCase();
+}
+
+function houseStyleBodies(type: InputType, title: string): string[] {
+  const topic = topicFromTitle(title, 5);
+  if (type === "recipe") {
+    return [
+      `My family asks for ${topic} on repeat`,
+      `Only a few ingredients and ${topic} turns out so cozy`,
+      `This no-fuss ${topic} tastes like comfort food`
+    ];
+  }
+
+  return [
+    `I had no idea this about ${topic} until now`,
+    `Most people get this wrong about ${topic}`,
+    `I thought this was normal, but I was wrong about ${topic}`
+  ];
 }
 
 function applyRecipeFocus(prompt: string, focus: RecipeImageFocus): string {
@@ -214,11 +241,12 @@ function coerceGenerated(
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
   while (captions.length < 3) captions.push(fallbackCaption);
   const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 14));
+  const houseBodies = houseStyleBodies(type, title).map((c) => clampWords(normalizeCaptionBody(c), 14));
 
-  const captionOnlyOptions = uniqueNonEmpty([...shortCaptionBodies, ...shortHooks]).slice(0, 3);
+  const captionOnlyOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks]).slice(0, 3);
   while (captionOnlyOptions.length < 3) captionOnlyOptions.push(clampWords(normalizeCaptionBody(fallbackCaption), 14));
 
-  const mergedCaptionOptions = uniqueNonEmpty(shortHooks.map((h) => buildMergedCaption(h, type))).slice(0, 3);
+  const mergedCaptionOptions = uniqueNonEmpty(captionOnlyOptions.map((body) => buildMergedCaption(body, type))).slice(0, 3);
   while (mergedCaptionOptions.length < 3) {
     const extra = captionOnlyOptions[mergedCaptionOptions.length] || fallbackCaption;
     mergedCaptionOptions.push(buildMergedCaption(extra, type));
