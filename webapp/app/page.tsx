@@ -20,6 +20,8 @@ type ApiSuccess = {
     hook_options?: string[];
     image_prompts?: Array<{ name: string; prompt: string }>;
     caption_options?: string[];
+    merged_caption_options?: string[];
+    caption_only_options?: string[];
     notes?: string;
   };
 };
@@ -167,35 +169,39 @@ export default function HomePage() {
 
           <article className="panel span-2">
             <h2>Caption Options</h2>
-            {(result.generated.hook_options || []).length > 0 ? <p className="subhead">Hook lines</p> : null}
-            {(result.generated.hook_options || []).map((h, idx) => (
-              <div key={`hook-${idx}`} className="copy-item">
-                <div className="copy-label">Hook {idx + 1}</div>
+            {(result.generated.merged_caption_options || result.generated.caption_options || []).length > 0 ? (
+              <p className="subhead">Ready to Post (Merged)</p>
+            ) : null}
+            {(result.generated.merged_caption_options || result.generated.caption_options || []).map((m, idx) => (
+              <div key={`merged-${idx}`} className="copy-item">
+                <div className="copy-label">Merged {idx + 1}</div>
                 <button
                   className="copy-btn"
                   type="button"
-                  onClick={() => copyText(`hook-${idx}`, h)}
-                  title="Copy hook line"
-                  aria-label={`Copy hook ${idx + 1}`}
+                  onClick={() => copyText(`merged-${idx}`, m)}
+                  title="Copy merged caption"
+                  aria-label={`Copy merged caption ${idx + 1}`}
                 >
-                  {copiedKey === `hook-${idx}` ? "Copied" : "📋 Copy"}
+                  {copiedKey === `merged-${idx}` ? "Copied" : "📋 Copy"}
                 </button>
-                <pre className="copy-text">{h}</pre>
+                <pre className="copy-text">{m}</pre>
               </div>
             ))}
 
-            {(result.generated.caption_options || []).length > 0 ? <p className="subhead">Full captions</p> : null}
-            {(result.generated.caption_options || []).map((c, idx) => (
-              <div key={`caption-${idx}`} className="copy-item">
-                <div className="copy-label">Caption {idx + 1}</div>
+            {(result.generated.caption_only_options || []).length > 0 ? (
+              <p className="subhead">Caption Only (Short)</p>
+            ) : null}
+            {(result.generated.caption_only_options || []).map((c, idx) => (
+              <div key={`caption-only-${idx}`} className="copy-item">
+                <div className="copy-label">Caption-only {idx + 1}</div>
                 <button
                   className="copy-btn"
                   type="button"
-                  onClick={() => copyText(`caption-${idx}`, c)}
-                  title="Copy caption"
-                  aria-label={`Copy caption ${idx + 1}`}
+                  onClick={() => copyText(`caption-only-${idx}`, c)}
+                  title="Copy caption-only"
+                  aria-label={`Copy caption-only ${idx + 1}`}
                 >
-                  {copiedKey === `caption-${idx}` ? "Copied" : "📋 Copy"}
+                  {copiedKey === `caption-only-${idx}` ? "Copied" : "📋 Copy"}
                 </button>
                 <pre className="copy-text">{c}</pre>
               </div>

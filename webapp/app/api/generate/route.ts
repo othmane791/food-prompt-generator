@@ -25,6 +25,8 @@ type GeneratedShape = {
   hook_options?: string[];
   image_prompts?: Array<{ name?: string; prompt?: string }>;
   caption_options?: string[];
+  merged_caption_options?: string[];
+  caption_only_options?: string[];
   notes?: string;
 };
 
@@ -122,6 +124,41 @@ function normalizeCaption(caption: string, type: InputType): string {
   return `${body}.\n${cta}`;
 }
 
+function normalizeCaptionBody(text: string): string {
+  const cleaned = (text || "")
+    .replace(/\s*Full\s+(recipe|article)\s*👇\s*💬\s*/gi, " ")
+    .replace(/[👇💬]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[.。]\s*$/, "");
+  return cleaned;
+}
+
+function clampWords(text: string, maxWords = 14): string {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text;
+  return words.slice(0, maxWords).join(" ");
+}
+
+function buildMergedCaption(body: string, type: InputType): string {
+  return normalizeCaption(body, type);
+}
+
+function uniqueNonEmpty(values: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const v = value.trim();
+    if (!v) continue;
+    const k = v.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(v);
+  }
+  return out;
+}
+
 function applyRecipeFocus(prompt: string, focus: RecipeImageFocus): string {
   const cleaned = (prompt || "").replace(/\s+/g, " ").trim();
   if (focus === "final_dish") {
@@ -143,6 +180,7 @@ function coerceGenerated(
   const hooks = Array.isArray(src.hook_options) ? src.hook_options.filter(Boolean).slice(0, 3) : [];
   const fallbackHook = `Want a smarter way to handle "${title}"?`;
   while (hooks.length < 3) hooks.push(fallbackHook);
+  const shortHooks = hooks.map((h) => clampWords(normalizeCaptionBody(h), 14));
 
   const prompts =
     Array.isArray(src.image_prompts) && src.image_prompts.length > 0
@@ -175,13 +213,25 @@ function coerceGenerated(
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 3) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
   while (captions.length < 3) captions.push(fallbackCaption);
+  const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 14));
+
+  const captionOnlyOptions = uniqueNonEmpty([...shortCaptionBodies, ...shortHooks]).slice(0, 3);
+  while (captionOnlyOptions.length < 3) captionOnlyOptions.push(clampWords(normalizeCaptionBody(fallbackCaption), 14));
+
+  const mergedCaptionOptions = uniqueNonEmpty(shortHooks.map((h) => buildMergedCaption(h, type))).slice(0, 3);
+  while (mergedCaptionOptions.length < 3) {
+    const extra = captionOnlyOptions[mergedCaptionOptions.length] || fallbackCaption;
+    mergedCaptionOptions.push(buildMergedCaption(extra, type));
+  }
 
   return {
     resolved_type: type,
     resolved_title: src.resolved_title?.trim() || title,
-    hook_options: hooks,
+    hook_options: shortHooks,
     image_prompts: namedPrompts,
-    caption_options: captions.map((c) => normalizeCaption(c, type)),
+    caption_options: mergedCaptionOptions,
+    merged_caption_options: mergedCaptionOptions,
+    caption_only_options: captionOnlyOptions,
     notes: src.notes?.trim() || "Use photo prompt for realism and text-overlay prompt for click-driven thumbnails."
   };
 }

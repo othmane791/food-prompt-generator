@@ -22,6 +22,8 @@ Hard rules:
 8) Keep captions short with this exact shape:
    - first line = hook/body sentence
    - second line = exact CTA line
+   - hook/body should be concise (around 6-14 words)
+   - avoid long storytelling captions
 9) Do not use emojis except the CTA line emoji.
 10) No hashtags unless explicitly requested.
 11) For text overlay prompt, include explicit overlay spec:
