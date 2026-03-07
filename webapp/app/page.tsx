@@ -30,6 +30,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ApiSuccess | null>(null);
+  const [copiedKey, setCopiedKey] = useState("");
 
   const canSubmit = useMemo(() => title.trim().length > 0 || link.trim().length > 0, [title, link]);
 
@@ -58,6 +59,16 @@ export default function HomePage() {
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function copyText(key: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedKey(key);
+      window.setTimeout(() => setCopiedKey(""), 1200);
+    } catch {
+      setCopiedKey("");
     }
   }
 
@@ -114,53 +125,63 @@ export default function HomePage() {
 
       {result ? (
         <section className="result-grid">
-          <article className="panel">
-            <h2>Resolved Input</h2>
-            <p>
-              <strong>Type:</strong> {result.input.type}
-            </p>
-            <p>
-              <strong>Title:</strong> {result.input.title}
-            </p>
-            <p>
-              <strong>Aspect:</strong> {result.input.aspectRatio || "2:3"}
-            </p>
-          </article>
-
-          <article className="panel">
-            <h2>Hook Options</h2>
-            <ul>
-              {(result.generated.hook_options || []).map((h, idx) => (
-                <li key={idx}>{h}</li>
-              ))}
-            </ul>
-          </article>
-
           <article className="panel span-2">
-            <h2>Image Prompts</h2>
+            <h2>Image Prompts ({result.input.aspectRatio || "2:3"})</h2>
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">
-                <h3>{p.name}</h3>
-                <pre>{p.prompt}</pre>
+                <div className="row-head">
+                  <h3>{p.name}</h3>
+                  <button
+                    className="copy-btn"
+                    type="button"
+                    onClick={() => copyText(`prompt-${idx}`, p.prompt)}
+                    title="Copy prompt"
+                    aria-label={`Copy ${p.name}`}
+                  >
+                    {copiedKey === `prompt-${idx}` ? "Copied" : "📋 Copy"}
+                  </button>
+                </div>
+                <pre className="copy-text">{p.prompt}</pre>
               </div>
             ))}
           </article>
 
           <article className="panel span-2">
             <h2>Caption Options</h2>
-            <ul>
-              {(result.generated.caption_options || []).map((c, idx) => (
-                <li key={idx}>{c}</li>
-              ))}
-            </ul>
-          </article>
+            {(result.generated.hook_options || []).length > 0 ? <p className="subhead">Hook lines</p> : null}
+            {(result.generated.hook_options || []).map((h, idx) => (
+              <div key={`hook-${idx}`} className="copy-item">
+                <div className="copy-label">Hook {idx + 1}</div>
+                <button
+                  className="copy-btn"
+                  type="button"
+                  onClick={() => copyText(`hook-${idx}`, h)}
+                  title="Copy hook line"
+                  aria-label={`Copy hook ${idx + 1}`}
+                >
+                  {copiedKey === `hook-${idx}` ? "Copied" : "📋 Copy"}
+                </button>
+                <pre className="copy-text">{h}</pre>
+              </div>
+            ))}
 
-          {result.generated.notes ? (
-            <article className="panel span-2">
-              <h2>Notes</h2>
-              <p>{result.generated.notes}</p>
-            </article>
-          ) : null}
+            {(result.generated.caption_options || []).length > 0 ? <p className="subhead">Full captions</p> : null}
+            {(result.generated.caption_options || []).map((c, idx) => (
+              <div key={`caption-${idx}`} className="copy-item">
+                <div className="copy-label">Caption {idx + 1}</div>
+                <button
+                  className="copy-btn"
+                  type="button"
+                  onClick={() => copyText(`caption-${idx}`, c)}
+                  title="Copy caption"
+                  aria-label={`Copy caption ${idx + 1}`}
+                >
+                  {copiedKey === `caption-${idx}` ? "Copied" : "📋 Copy"}
+                </button>
+                <pre className="copy-text">{c}</pre>
+              </div>
+            ))}
+          </article>
         </section>
       ) : null}
     </main>
