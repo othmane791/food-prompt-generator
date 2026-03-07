@@ -376,48 +376,76 @@ function coerceGenerated(
 
 async function callOpenAI(system: string, user: string): Promise<unknown> {
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+  const primaryModel = process.env.OPENAI_MODEL || "gpt-5.4-2026-03-05";
+  const fallbackModels = (process.env.OPENAI_FALLBACK_MODELS || "gpt-5.4,gpt-5-mini")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  const models = uniqueNonEmpty([primaryModel, ...fallbackModels]);
 
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is missing");
   }
 
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user }
-      ]
-    })
-  });
+  let lastError = "Unknown model error";
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenAI error (${res.status}): ${text}`);
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.7,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user }
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      lastError = `OpenAI error for model "${model}" (${res.status}): ${text}`;
+      const lower = text.toLowerCase();
+      const shouldFallback =
+        i < models.length - 1 &&
+        (res.status === 404 ||
+          res.status === 429 ||
+          res.status === 503 ||
+          lower.includes("model") ||
+          lower.includes("does not exist") ||
+          lower.includes("not found") ||
+          lower.includes("access"));
+      if (shouldFallback) continue;
+      throw new Error(lastError);
+    }
+
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      lastError = `Model "${model}" returned empty response`;
+      if (i < models.length - 1) continue;
+      throw new Error(lastError);
+    }
+
+    try {
+      return JSON.parse(content);
+    } catch {
+      lastError = `Model "${model}" response was not valid JSON`;
+      if (i < models.length - 1) continue;
+      throw new Error(lastError);
+    }
   }
 
-  const data = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error("Model returned empty response");
-  }
-
-  try {
-    return JSON.parse(content);
-  } catch {
-    throw new Error("Model response was not valid JSON");
-  }
+  throw new Error(lastError);
 }
 
 export async function POST(req: NextRequest) {
