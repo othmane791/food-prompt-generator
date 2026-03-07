@@ -27,6 +27,9 @@ type ApiSuccess = {
 };
 
 export default function HomePage() {
+  const MAX_MERGED_OPTIONS = 2;
+  const MAX_CAPTION_ONLY_OPTIONS = 2;
+
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
@@ -38,6 +41,12 @@ export default function HomePage() {
   const [copiedKey, setCopiedKey] = useState("");
 
   const canSubmit = useMemo(() => title.trim().length > 0 || link.trim().length > 0, [title, link]);
+  const mergedCaptionOptions = (
+    result?.generated.merged_caption_options ||
+    result?.generated.caption_options ||
+    []
+  ).slice(0, MAX_MERGED_OPTIONS);
+  const captionOnlyOptions = (result?.generated.caption_only_options || []).slice(0, MAX_CAPTION_ONLY_OPTIONS);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -169,10 +178,10 @@ export default function HomePage() {
 
           <article className="panel span-2">
             <h2>Caption Options</h2>
-            {(result.generated.merged_caption_options || result.generated.caption_options || []).length > 0 ? (
+            {mergedCaptionOptions.length > 0 ? (
               <p className="subhead">Ready to Post (Merged)</p>
             ) : null}
-            {(result.generated.merged_caption_options || result.generated.caption_options || []).map((m, idx) => (
+            {mergedCaptionOptions.map((m, idx) => (
               <div key={`merged-${idx}`} className="copy-item">
                 <div className="copy-label">Merged {idx + 1}</div>
                 <button
@@ -188,10 +197,10 @@ export default function HomePage() {
               </div>
             ))}
 
-            {(result.generated.caption_only_options || []).length > 0 ? (
+            {captionOnlyOptions.length > 0 ? (
               <p className="subhead">Caption Only (Short)</p>
             ) : null}
-            {(result.generated.caption_only_options || []).map((c, idx) => (
+            {captionOnlyOptions.map((c, idx) => (
               <div key={`caption-only-${idx}`} className="copy-item">
                 <div className="copy-label">Caption-only {idx + 1}</div>
                 <button
