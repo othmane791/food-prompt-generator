@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { STYLE_RULES } from "@/lib/styleRules";
 
 type InputType = "recipe" | "article";
+type AspectRatio = "2:3" | "4:5";
 
 type GeneratePayload = {
   type?: InputType;
   title?: string;
   link?: string;
+  aspectRatio?: AspectRatio;
 };
 
 type LinkExtract = {
@@ -15,8 +17,25 @@ type LinkExtract = {
   bodySnippet: string;
 };
 
+type GeneratedShape = {
+  resolved_type?: string;
+  resolved_title?: string;
+  hook_options?: string[];
+  image_prompts?: Array<{ name?: string; prompt?: string }>;
+  caption_options?: string[];
+  notes?: string;
+};
+
 function normalizeType(value?: string): InputType {
   return value === "article" ? "article" : "recipe";
+}
+
+function normalizeAspectRatio(value?: string): AspectRatio {
+  return value === "4:5" ? "4:5" : "2:3";
+}
+
+function aspectLabel(ratio: AspectRatio): string {
+  return ratio === "4:5" ? "portrait 4:5 (1080x1350)" : "portrait 2:3 (1080x1620)";
 }
 
 function extractTag(html: string, tagName: string): string {
@@ -58,7 +77,13 @@ async function fetchLinkData(url: string): Promise<LinkExtract> {
   return { title, description, bodySnippet };
 }
 
-function buildUserPrompt(input: { type: InputType; title: string; link?: string; linkData?: LinkExtract }): string {
+function buildUserPrompt(input: {
+  type: InputType;
+  title: string;
+  link?: string;
+  linkData?: LinkExtract;
+  aspectRatio: AspectRatio;
+}): string {
   return JSON.stringify(
     {
       task: "Generate image prompts and captions for a single post.",
@@ -66,6 +91,8 @@ function buildUserPrompt(input: { type: InputType; title: string; link?: string;
       title: input.title,
       source_link: input.link || "",
       source_preview: input.linkData || null,
+      aspect_ratio: input.aspectRatio,
+      aspect_format: aspectLabel(input.aspectRatio),
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
         output_language: "English",
@@ -75,6 +102,59 @@ function buildUserPrompt(input: { type: InputType; title: string; link?: string;
     null,
     2
   );
+}
+
+function normalizeCaption(caption: string, type: InputType): string {
+  const cta = type === "recipe" ? "Full recipe 👇 💬" : "Full article 👇 💬";
+  const cleaned = (caption || "")
+    .replace(/\s*Full\s+(recipe|article)\s*👇\s*💬\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const body = cleaned.replace(/[.。]\s*$/, "");
+  return `${body}.\n${cta}`;
+}
+
+function coerceGenerated(raw: unknown, type: InputType, title: string, ratio: AspectRatio): GeneratedShape {
+  const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
+  const ratioText = aspectLabel(ratio);
+
+  const hooks = Array.isArray(src.hook_options) ? src.hook_options.filter(Boolean).slice(0, 3) : [];
+  const fallbackHook = `Want a smarter way to handle "${title}"?`;
+  while (hooks.length < 3) hooks.push(fallbackHook);
+
+  const prompts =
+    Array.isArray(src.image_prompts) && src.image_prompts.length > 0
+      ? src.image_prompts
+      : [
+          {
+            name: "photo_prompt",
+            prompt: `Photorealistic kitchen scene for "${title}", warm natural light, practical close framing, realistic textures, ${ratioText}, no text overlay, no logos or watermarks.`
+          },
+          {
+            name: "text_overlay_prompt",
+            prompt: `Photorealistic kitchen scene for "${title}", warm natural light, ${ratioText}; large bold sans-serif high-contrast headline overlay (1-2 lines), centered placement, no logos or watermarks.`
+          }
+        ];
+
+  const namedPrompts = prompts
+    .map((p, idx) => ({
+      name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
+      prompt: (p.prompt || "").trim()
+    }))
+    .filter((p) => p.prompt);
+
+  const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 3) : [];
+  const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
+  while (captions.length < 3) captions.push(fallbackCaption);
+
+  return {
+    resolved_type: type,
+    resolved_title: src.resolved_title?.trim() || title,
+    hook_options: hooks,
+    image_prompts: namedPrompts,
+    caption_options: captions.map((c) => normalizeCaption(c, type)),
+    notes: src.notes?.trim() || "Use photo prompt for realism and text-overlay prompt for click-driven thumbnails."
+  };
 }
 
 async function callOpenAI(system: string, user: string): Promise<unknown> {
@@ -127,6 +207,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as GeneratePayload;
     const type = normalizeType(body.type);
+    const ratio = normalizeAspectRatio(body.aspectRatio);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -144,17 +225,20 @@ export async function POST(req: NextRequest) {
       type,
       title: resolvedTitle,
       link: link || undefined,
-      linkData
+      linkData,
+      aspectRatio: ratio
     });
 
-    const generated = await callOpenAI(STYLE_RULES, userPrompt);
+    const generatedRaw = await callOpenAI(STYLE_RULES, userPrompt);
+    const generated = coerceGenerated(generatedRaw, type, resolvedTitle, ratio);
 
     return NextResponse.json(
       {
         input: {
           type,
           title: resolvedTitle,
-          link: link || null
+          link: link || null,
+          aspectRatio: ratio
         },
         generated
       },

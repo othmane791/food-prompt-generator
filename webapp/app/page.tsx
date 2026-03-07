@@ -3,12 +3,14 @@
 import { FormEvent, useMemo, useState } from "react";
 
 type PostType = "recipe" | "article";
+type AspectRatio = "2:3" | "4:5";
 
 type ApiSuccess = {
   input: {
     type: PostType;
     title: string;
     link: string | null;
+    aspectRatio?: AspectRatio;
   };
   generated: {
     resolved_type?: string;
@@ -22,6 +24,7 @@ type ApiSuccess = {
 
 export default function HomePage() {
   const [type, setType] = useState<PostType>("recipe");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -42,7 +45,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, title, link })
+        body: JSON.stringify({ type, title, link, aspectRatio })
       });
 
       const data = await res.json();
@@ -72,6 +75,14 @@ export default function HomePage() {
             <select value={type} onChange={(e) => setType(e.target.value as PostType)}>
               <option value="recipe">Recipe</option>
               <option value="article">Article</option>
+            </select>
+          </label>
+
+          <label>
+            Aspect Ratio
+            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}>
+              <option value="2:3">2:3 (1080x1620)</option>
+              <option value="4:5">4:5 (1080x1350)</option>
             </select>
           </label>
 
@@ -110,6 +121,9 @@ export default function HomePage() {
             </p>
             <p>
               <strong>Title:</strong> {result.input.title}
+            </p>
+            <p>
+              <strong>Aspect:</strong> {result.input.aspectRatio || "2:3"}
             </p>
           </article>
 

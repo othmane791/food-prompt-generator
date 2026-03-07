@@ -4,6 +4,7 @@ Web app that generates:
 - image prompts (`photo_prompt` + `text_overlay_prompt`)
 - 3 hook options
 - 3 caption options with recipe/article CTA style
+- selectable aspect ratio per request (`2:3` or `4:5`)
 
 ## 1) Run Locally
 
