@@ -186,12 +186,65 @@ function houseStyleBodies(type: InputType, title: string): string[] {
   ];
 }
 
-function applyRecipeFocus(prompt: string, focus: RecipeImageFocus): string {
-  const cleaned = (prompt || "").replace(/\s+/g, " ").trim();
+function recipeFocusSentence(focus: RecipeImageFocus): string {
   if (focus === "final_dish") {
-    return `${cleaned} Show a finished cooked dish presentation, ready to serve.`;
+    return "Show a finished cooked dish presentation, ready to serve.";
   }
-  return `${cleaned} Show an in-progress prep/ingredient action moment (adding, pouring, layering, mixing), before final serving; avoid finished plated dish.`;
+  return "Show an in-progress prep/ingredient action moment (adding, pouring, layering, mixing), before final serving; avoid finished plated dish.";
+}
+
+function normalizePromptText(text: string): string {
+  return (text || "").replace(/\s+/g, " ").trim();
+}
+
+function withAspect(text: string, ratioText: string): string {
+  const cleaned = normalizePromptText(text);
+  if (/portrait\s*(2:3|4:5)/i.test(cleaned)) return cleaned;
+  return `${cleaned} ${ratioText}.`;
+}
+
+function enforceVisualProfile(
+  prompt: string,
+  promptName: string,
+  type: InputType,
+  ratioText: string,
+  recipeImageFocus: RecipeImageFocus
+): string {
+  const name = (promptName || "").toLowerCase();
+  let cleaned = withAspect(prompt, ratioText)
+    .replace(/\bno text overlay\b\.?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const parts: string[] = [cleaned];
+
+  if (type === "recipe") {
+    parts.push(
+      "Style profile: warm natural kitchen light, cozy comfort-food tones, moderate contrast, close or medium-close framing, realistic home-kitchen texture."
+    );
+    parts.push(recipeFocusSentence(recipeImageFocus));
+    if (name.includes("text_overlay")) {
+      parts.push(
+        "Optional overlay mode only: one short headline line, high contrast text, place near top area, keep food photo dominant."
+      );
+    } else {
+      parts.push("No text overlay.");
+    }
+  } else {
+    parts.push(
+      "Style profile: cleaner composition, slightly higher color pop, simplified background, practical food/kitchen context."
+    );
+    if (name.includes("text_overlay")) {
+      parts.push(
+        "Use bold light headline text (1-2 lines) on a dark translucent box, centered or upper-middle, mobile readable."
+      );
+    } else {
+      parts.push("No text overlay; keep clear readable negative space.");
+    }
+  }
+
+  parts.push("No logos. No watermark.");
+  return parts.map(normalizePromptText).filter(Boolean).join(" ");
 }
 
 function coerceGenerated(
@@ -230,10 +283,9 @@ function coerceGenerated(
     }))
     .filter((p) => p.prompt)
     .map((p) => {
-      if (type !== "recipe") return p;
       return {
         ...p,
-        prompt: applyRecipeFocus(p.prompt, recipeImageFocus)
+        prompt: enforceVisualProfile(p.prompt, p.name, type, ratioText, recipeImageFocus)
       };
     });
 
@@ -260,7 +312,11 @@ function coerceGenerated(
     caption_options: mergedCaptionOptions,
     merged_caption_options: mergedCaptionOptions,
     caption_only_options: captionOnlyOptions,
-    notes: src.notes?.trim() || "Use photo prompt for realism and text-overlay prompt for click-driven thumbnails."
+    notes:
+      src.notes?.trim() ||
+      (type === "recipe"
+        ? "Recipe best practice from analysis: use photo_prompt as primary; text_overlay_prompt is optional/minority."
+        : "Article best practice from analysis: text_overlay_prompt is often strongest; keep headline short and high contrast.")
   };
 }
 

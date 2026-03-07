@@ -35,6 +35,17 @@ Hard rules:
 12) For recipe posts, strictly honor "recipe_image_focus":
    - if "step_or_ingredient": show in-progress prep/action (adding, pouring, layering, mixing), avoid finished plated dish.
    - if "final_dish": show cooked finished dish presentation.
+13) Visual profile constraints from historical analysis:
+   - recipe: mostly photo-first, warm tones, practical close framing, kitchen realism, low text-overlay usage.
+   - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
+14) For recipe text_overlay_prompt:
+   - keep it optional/minority style
+   - one short line only
+   - keep food photo dominant
+15) For article text_overlay_prompt:
+   - default to bold white/light text on dark translucent box
+   - centered or upper-middle
+   - 1-2 lines max, mobile readable.
 
 Output must be valid JSON only (no markdown), with this shape:
 {
