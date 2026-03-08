@@ -4,6 +4,7 @@ import { STYLE_RULES } from "@/lib/styleRules";
 type InputType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
+type CameraAngleMode = "regular_40_55" | "above";
 
 type GeneratePayload = {
   type?: InputType;
@@ -11,6 +12,7 @@ type GeneratePayload = {
   link?: string;
   aspectRatio?: AspectRatio;
   recipeImageFocus?: RecipeImageFocus;
+  cameraAngleMode?: CameraAngleMode;
 };
 
 type LinkExtract = {
@@ -45,6 +47,10 @@ function normalizeAspectRatio(value?: string): AspectRatio {
 
 function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {
   return value === "final_dish" ? "final_dish" : "step_or_ingredient";
+}
+
+function normalizeCameraAngleMode(value?: string): CameraAngleMode {
+  return value === "above" ? "above" : "regular_40_55";
 }
 
 function aspectLabel(ratio: AspectRatio): string {
@@ -97,6 +103,7 @@ function buildUserPrompt(input: {
   linkData?: LinkExtract;
   aspectRatio: AspectRatio;
   recipeImageFocus: RecipeImageFocus;
+  cameraAngleMode: CameraAngleMode;
 }): string {
   return JSON.stringify(
     {
@@ -108,6 +115,7 @@ function buildUserPrompt(input: {
       aspect_ratio: input.aspectRatio,
       aspect_format: aspectLabel(input.aspectRatio),
       recipe_image_focus: input.recipeImageFocus,
+      camera_angle_mode: input.cameraAngleMode,
       caption_strategy: {
         source: "top-engagement analysis",
         first_line_target_words: "18-24 (occasionally up to 28)",
@@ -132,7 +140,10 @@ function buildUserPrompt(input: {
       },
       recipe_image_strategy: {
         framing: "close or medium-close composition, tight crop so food fills most of frame",
-        camera_angle: "casual smartphone angle around 40-55 degrees above food with slight handheld feel",
+        camera_angle:
+          input.cameraAngleMode === "above"
+            ? "above shot, top-down smartphone angle from above the food"
+            : "regular casual smartphone angle around 40-55 degrees above food with slight handheld feel",
         cooking_moment: "always in-progress action, never finished plated dish",
         action_pool: [
           "pouring sauce",
@@ -631,7 +642,8 @@ function enforceVisualProfile(
   type: InputType,
   ratioText: string,
   _recipeImageFocus: RecipeImageFocus,
-  title: string
+  title: string,
+  cameraAngleMode: CameraAngleMode
 ): string {
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
@@ -643,9 +655,14 @@ function enforceVisualProfile(
   const overlaySentence = recipeOverlaySentence(title);
   const actionMoment = recipeActionMoment(title, name);
   const handInteraction = recipeHandInteraction(title, name);
+  const cameraAngleSentence =
+    cameraAngleMode === "above"
+      ? "Camera angle: above shot (top-down smartphone perspective from above) while keeping a tight close crop."
+      : "Camera angle: casual smartphone perspective around 40-55 degrees above the food.";
   const recipeRealismStyle = [
     `Photorealistic casual home-kitchen cooking photo, ${ratioText}.`,
-    "Casual smartphone kitchen photo with slight handheld perspective, around 40-55 degrees above the food.",
+    "Casual smartphone kitchen photo with slight handheld perspective.",
+    cameraAngleSentence,
     "Close or medium-close composition with tight framing so food fills most of the frame.",
     `Scene: ${actionMoment}; this must be an in-progress cooking moment, never a finished plated dish.`,
     "Food textures should look real: irregular browning, bubbling sauce or oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, and natural cooking imperfections.",
@@ -707,14 +724,20 @@ function buildNanobananaPrompt(
   promptName: string,
   type: InputType,
   _recipeImageFocus: RecipeImageFocus,
-  title: string
+  title: string,
+  cameraAngleMode: CameraAngleMode
 ): string {
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
   const actionMoment = recipeActionMoment(title, name);
   const handInteraction = recipeHandInteraction(title, name);
+  const cameraAngleSentence =
+    cameraAngleMode === "above"
+      ? "Camera angle: above shot (top-down smartphone view from above), tight close framing."
+      : "Camera angle: casual smartphone view around 40-55 degrees above the food.";
   const recipeRealismStyle = [
-    "Casual smartphone kitchen photo with slight handheld perspective and camera around 40-55 degrees above the food.",
+    "Casual smartphone kitchen photo with slight handheld perspective.",
+    cameraAngleSentence,
     "Close or medium-close composition with tight crop so the food fills most of the frame.",
     `In-progress cooking action: ${actionMoment}; never a finished plated dish.`,
     "Food realism: irregular browning, bubbling sauce or oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, and natural cooking imperfections.",
@@ -759,7 +782,8 @@ function coerceGenerated(
   type: InputType,
   title: string,
   ratio: AspectRatio,
-  recipeImageFocus: RecipeImageFocus
+  recipeImageFocus: RecipeImageFocus,
+  cameraAngleMode: CameraAngleMode
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -790,7 +814,15 @@ function coerceGenerated(
     }))
     .filter((p) => p.prompt)
     .map((p) => {
-      const openAIPrompt = enforceVisualProfile(p.prompt, p.name, type, ratioText, recipeImageFocus, title);
+      const openAIPrompt = enforceVisualProfile(
+        p.prompt,
+        p.name,
+        type,
+        ratioText,
+        recipeImageFocus,
+        title,
+        cameraAngleMode
+      );
       return {
         name: p.name,
         prompt: openAIPrompt,
@@ -800,7 +832,8 @@ function coerceGenerated(
           p.name,
           type,
           recipeImageFocus,
-          title
+          title,
+          cameraAngleMode
         )
       };
     });
@@ -939,6 +972,7 @@ export async function POST(req: NextRequest) {
     const type = normalizeType(body.type);
     const ratio = normalizeAspectRatio(body.aspectRatio);
     const recipeImageFocus = normalizeRecipeImageFocus(body.recipeImageFocus);
+    const cameraAngleMode = normalizeCameraAngleMode(body.cameraAngleMode);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -958,11 +992,19 @@ export async function POST(req: NextRequest) {
       link: link || undefined,
       linkData,
       aspectRatio: ratio,
-      recipeImageFocus
+      recipeImageFocus,
+      cameraAngleMode
     });
 
     const generatedRaw = await callOpenAI(STYLE_RULES, userPrompt);
-    const generated = coerceGenerated(generatedRaw, type, resolvedTitle, ratio, recipeImageFocus);
+    const generated = coerceGenerated(
+      generatedRaw,
+      type,
+      resolvedTitle,
+      ratio,
+      recipeImageFocus,
+      cameraAngleMode
+    );
 
     return NextResponse.json(
       {
@@ -971,7 +1013,8 @@ export async function POST(req: NextRequest) {
           title: resolvedTitle,
           link: link || null,
           aspectRatio: ratio,
-          recipeImageFocus: type === "recipe" ? recipeImageFocus : null
+          recipeImageFocus: type === "recipe" ? recipeImageFocus : null,
+          cameraAngleMode: type === "recipe" ? cameraAngleMode : null
         },
         generated
       },

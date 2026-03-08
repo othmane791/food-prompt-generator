@@ -13,7 +13,9 @@ Hard rules:
 4) The visual style should match this pattern:
    - photorealistic casual home-kitchen cooking photo in portrait 4:5 (1080x1350) by default
    - casual smartphone kitchen photo with slightly handheld perspective
-   - camera angle around 40-55 degrees above the food
+   - camera angle must follow input `camera_angle_mode`:
+     * `regular_40_55`: around 40-55 degrees above the food
+     * `above`: above shot / top-down smartphone view from above
    - close or medium-close composition with tight crop so food dominates frame
    - for recipe posts, scene must be in-progress cooking action, never finished plated dish
    - action examples to rotate: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan

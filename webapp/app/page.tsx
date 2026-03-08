@@ -5,6 +5,7 @@ import { FormEvent, useMemo, useState } from "react";
 type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
+type CameraAngleMode = "regular_40_55" | "above";
 
 type ApiSuccess = {
   input: {
@@ -13,6 +14,7 @@ type ApiSuccess = {
     link: string | null;
     aspectRatio?: AspectRatio;
     recipeImageFocus?: RecipeImageFocus | null;
+    cameraAngleMode?: CameraAngleMode | null;
   };
   generated: {
     resolved_type?: string;
@@ -38,6 +40,7 @@ export default function HomePage() {
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
+  const [cameraAngleMode, setCameraAngleMode] = useState<CameraAngleMode>("regular_40_55");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,7 +68,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, title, link, aspectRatio, recipeImageFocus })
+        body: JSON.stringify({ type, title, link, aspectRatio, recipeImageFocus, cameraAngleMode })
       });
 
       const data = await res.json();
@@ -89,6 +92,10 @@ export default function HomePage() {
     } catch {
       setCopiedKey("");
     }
+  }
+
+  function cameraAngleLabel(mode?: CameraAngleMode | null) {
+    return mode === "above" ? "Above shot" : "Regular shot 40°-55°";
   }
 
   return (
@@ -129,6 +136,38 @@ export default function HomePage() {
             </label>
           ) : null}
 
+          {type === "recipe" ? (
+            <fieldset className="camera-angle-fieldset">
+              <legend>Camera Angle</legend>
+              <div className="camera-angle-options">
+                <button
+                  type="button"
+                  className={`camera-angle-option ${cameraAngleMode === "regular_40_55" ? "active" : ""}`}
+                  onClick={() => setCameraAngleMode("regular_40_55")}
+                  aria-pressed={cameraAngleMode === "regular_40_55"}
+                >
+                  <span className="camera-angle-icon" aria-hidden>
+                    📷
+                  </span>
+                  <span className="camera-angle-title">Regular shot 40°-55°</span>
+                  <span className="camera-angle-sub">Angled smartphone perspective</span>
+                </button>
+                <button
+                  type="button"
+                  className={`camera-angle-option ${cameraAngleMode === "above" ? "active" : ""}`}
+                  onClick={() => setCameraAngleMode("above")}
+                  aria-pressed={cameraAngleMode === "above"}
+                >
+                  <span className="camera-angle-icon" aria-hidden>
+                    🖼️
+                  </span>
+                  <span className="camera-angle-title">Above shot</span>
+                  <span className="camera-angle-sub">Top-down smartphone perspective</span>
+                </button>
+              </div>
+            </fieldset>
+          ) : null}
+
           <label>
             Title
             <input
@@ -160,7 +199,8 @@ export default function HomePage() {
           <article className="panel span-2">
             <h2>
               Image Prompts ({result.input.aspectRatio || "4:5"}
-              {result.input.recipeImageFocus ? `, ${result.input.recipeImageFocus}` : ""})
+              {result.input.recipeImageFocus ? `, ${result.input.recipeImageFocus}` : ""}
+              {result.input.cameraAngleMode ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}` : ""})
             </h2>
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">

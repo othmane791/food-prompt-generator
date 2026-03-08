@@ -56,6 +56,57 @@ label {
   font-weight: 700;
 }
 
+.camera-angle-fieldset {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.camera-angle-fieldset legend {
+  padding: 0 0.3rem;
+  font-weight: 700;
+}
+
+.camera-angle-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.camera-angle-option {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf9;
+  color: var(--ink);
+  text-align: left;
+  padding: 0.6rem 0.65rem;
+  display: grid;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.camera-angle-option.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(143, 62, 31, 0.16);
+}
+
+.camera-angle-icon {
+  font-size: 1rem;
+}
+
+.camera-angle-title {
+  font-weight: 700;
+  font-size: 0.94rem;
+}
+
+.camera-angle-sub {
+  font-size: 0.82rem;
+  color: #6a5a4a;
+}
+
 input,
 select,
 button {
@@ -199,6 +250,10 @@ pre {
   }
 
   .prompt-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .camera-angle-options {
     grid-template-columns: 1fr;
   }
 }
