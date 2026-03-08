@@ -586,6 +586,8 @@ function enforceVisualProfile(
     .replace(/\s+/g, " ")
     .trim();
   const overlaySentence = recipeOverlaySentence(title);
+  const realismStyle =
+    "Shot like a casual smartphone kitchen photo with slight handheld perspective and mildly imperfect framing. Real lived-in home kitchen details: subtle splashes, crumbs, uneven ingredient placement, and natural counter clutter. Side window light with soft shadows and uneven highlights, not studio lighting. Highly realistic food texture with irregular browning, bubbling sauce, tiny oil droplets, uneven seasoning, and light steam/splatters. Casual utensil and ingredient placement as in real home cooking. Avoid food-magazine styling, perfect symmetry, or overly clean staged scenes.";
 
   const parts: string[] = [cleaned];
 
@@ -593,6 +595,7 @@ function enforceVisualProfile(
     parts.push(
       "Style profile: warm natural kitchen light, cozy comfort-food tones, moderate contrast, close or medium-close framing, realistic home-kitchen texture."
     );
+    parts.push(realismStyle);
     parts.push(recipeFocusSentence(recipeImageFocus));
     if (name.includes("text_overlay")) {
       cleaned = cleaned
@@ -612,6 +615,7 @@ function enforceVisualProfile(
     parts.push(
       "Style profile: cleaner composition, slightly higher color pop, simplified background, practical food/kitchen context."
     );
+    parts.push(realismStyle);
     if (name.includes("text_overlay")) {
       parts.push(
         "Use bold light headline text (1-2 lines) on a dark translucent box, centered or upper-middle, mobile readable."
@@ -640,10 +644,13 @@ function buildNanobananaPrompt(
 ): string {
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
+  const realismStyle =
+    "Casual smartphone kitchen-photo feel, slight handheld perspective, mildly imperfect framing, lived-in home kitchen imperfections (crumbs, small splashes, uneven placement), side window light with soft uneven highlights, realistic messy cooking texture (irregular browning, bubbling sauce, tiny oil droplets, steam/splatters), avoid polished magazine styling and perfect symmetry.";
   const parts: string[] = [scene];
 
   if (type === "recipe") {
     parts.push("Photoreal food photography, warm natural kitchen light, cozy home-cooking mood, detailed textures.");
+    parts.push(realismStyle);
     if (recipeImageFocus === "step_or_ingredient") {
       parts.push("Show in-progress ingredient/assembly step, not final plated dish.");
     } else {
@@ -658,6 +665,7 @@ function buildNanobananaPrompt(
     }
   } else {
     parts.push("Photoreal practical kitchen context, clean composition, high clarity, realistic color.");
+    parts.push(realismStyle);
     if (name.includes("text_overlay")) {
       parts.push(
         `Overlay style: bold light sans-serif text on a dark translucent box at upper-middle, 1-2 lines.`

@@ -16,6 +16,11 @@ Hard rules:
    - cozy home-kitchen realism
    - practical step/ingredient context (not generic stock glamour)
    - stay in food/cooking/kitchen domain
+   - casual smartphone-photo feel: slight handheld perspective and mildly imperfect framing
+   - lived-in kitchen details: tiny splashes/crumbs/uneven placement/counter clutter
+   - side window light with soft uneven highlights and shadows (not studio light)
+   - realistic cooking mess/chaos: sauce drips, steam, splatters, irregular browning, bubbling sauces, uneven seasoning
+   - avoid food-magazine styling, perfect symmetry, and overly clean staged scenes
 5) Captions must sound conversational and curiosity-led.
 6) For recipe posts, CTA line must be exactly: "Full recipe 👇 💬"
 7) For article posts, CTA line must be exactly: "Full article 👇 💬"
