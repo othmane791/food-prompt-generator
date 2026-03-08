@@ -5,6 +5,8 @@ import { FormEvent, useMemo, useState } from "react";
 type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
+type CaptionTone = "curiosity" | "comfort" | "bold" | "question";
+type CaptionStyleMode = "standard" | "top_performer";
 
 type ApiSuccess = {
   input: {
@@ -13,6 +15,8 @@ type ApiSuccess = {
     link: string | null;
     aspectRatio?: AspectRatio;
     recipeImageFocus?: RecipeImageFocus | null;
+    captionTone?: CaptionTone;
+    captionStyleMode?: CaptionStyleMode;
   };
   generated: {
     resolved_type?: string;
@@ -43,6 +47,8 @@ export default function HomePage() {
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
+  const [captionTone, setCaptionTone] = useState<CaptionTone>("curiosity");
+  const [captionStyleMode, setCaptionStyleMode] = useState<CaptionStyleMode>("top_performer");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -70,7 +76,15 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, title, link, aspectRatio, recipeImageFocus })
+        body: JSON.stringify({
+          type,
+          title,
+          link,
+          aspectRatio,
+          recipeImageFocus,
+          captionTone,
+          captionStyleMode
+        })
       });
 
       const data = await res.json();
@@ -122,16 +136,42 @@ export default function HomePage() {
           </label>
 
           {type === "recipe" ? (
-            <label>
-              Recipe Image Focus
-              <select
-                value={recipeImageFocus}
-                onChange={(e) => setRecipeImageFocus(e.target.value as RecipeImageFocus)}
-              >
-                <option value="step_or_ingredient">Step / Ingredient (Recommended)</option>
-                <option value="final_dish">Final Dish</option>
-              </select>
-            </label>
+            <>
+              <label>
+                Recipe Image Focus
+                <select
+                  value={recipeImageFocus}
+                  onChange={(e) => setRecipeImageFocus(e.target.value as RecipeImageFocus)}
+                >
+                  <option value="step_or_ingredient">Step / Ingredient (Recommended)</option>
+                  <option value="final_dish">Final Dish</option>
+                </select>
+              </label>
+
+              <label>
+                Caption Tone
+                <select
+                  value={captionTone}
+                  onChange={(e) => setCaptionTone(e.target.value as CaptionTone)}
+                >
+                  <option value="curiosity">Curiosity</option>
+                  <option value="comfort">Comfort</option>
+                  <option value="bold">Bold</option>
+                  <option value="question">Question-led</option>
+                </select>
+              </label>
+
+              <label>
+                Caption Style Mode
+                <select
+                  value={captionStyleMode}
+                  onChange={(e) => setCaptionStyleMode(e.target.value as CaptionStyleMode)}
+                >
+                  <option value="top_performer">Top-performer style (Recommended)</option>
+                  <option value="standard">Standard style</option>
+                </select>
+              </label>
+            </>
           ) : null}
 
           <label>

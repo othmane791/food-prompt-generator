@@ -4,6 +4,8 @@ import { STYLE_RULES } from "@/lib/styleRules";
 type InputType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
+type CaptionTone = "curiosity" | "comfort" | "bold" | "question";
+type CaptionStyleMode = "standard" | "top_performer";
 
 type GeneratePayload = {
   type?: InputType;
@@ -11,6 +13,8 @@ type GeneratePayload = {
   link?: string;
   aspectRatio?: AspectRatio;
   recipeImageFocus?: RecipeImageFocus;
+  captionTone?: CaptionTone;
+  captionStyleMode?: CaptionStyleMode;
 };
 
 type LinkExtract = {
@@ -45,6 +49,15 @@ function normalizeAspectRatio(value?: string): AspectRatio {
 
 function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {
   return value === "final_dish" ? "final_dish" : "step_or_ingredient";
+}
+
+function normalizeCaptionTone(value?: string): CaptionTone {
+  if (value === "comfort" || value === "bold" || value === "question") return value;
+  return "curiosity";
+}
+
+function normalizeCaptionStyleMode(value?: string): CaptionStyleMode {
+  return value === "top_performer" ? "top_performer" : "standard";
 }
 
 function aspectLabel(ratio: AspectRatio): string {
@@ -97,6 +110,8 @@ function buildUserPrompt(input: {
   linkData?: LinkExtract;
   aspectRatio: AspectRatio;
   recipeImageFocus: RecipeImageFocus;
+  captionTone: CaptionTone;
+  captionStyleMode: CaptionStyleMode;
 }): string {
   return JSON.stringify(
     {
@@ -108,6 +123,8 @@ function buildUserPrompt(input: {
       aspect_ratio: input.aspectRatio,
       aspect_format: aspectLabel(input.aspectRatio),
       recipe_image_focus: input.recipeImageFocus,
+      caption_tone: input.captionTone,
+      caption_style_mode: input.captionStyleMode,
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
         output_language: "English",
@@ -190,6 +207,74 @@ function pickBySeed(values: string[], seed: number, salt: number): string {
   return values[(seed + salt) % values.length];
 }
 
+const RECIPE_CAPTION_HISTORY_LIMIT = 20;
+const recipeCaptionHistory: string[] = [];
+
+function historyKey(text: string): string {
+  return normalizeCaptionBody(text).toLowerCase();
+}
+
+function isRecentlyUsed(text: string): boolean {
+  const key = historyKey(text);
+  return recipeCaptionHistory.includes(key);
+}
+
+function rememberRecipeCaptions(lines: string[]): void {
+  for (const line of lines) {
+    const key = historyKey(line);
+    if (!key) continue;
+    recipeCaptionHistory.push(key);
+  }
+  while (recipeCaptionHistory.length > RECIPE_CAPTION_HISTORY_LIMIT) {
+    recipeCaptionHistory.shift();
+  }
+}
+
+function recipeConcreteDetail(title: string): string {
+  const t = title.toLowerCase();
+  if (/\bslow cooker|crock pot|crockpot\b/.test(t)) return "slow cooker";
+  if (/\bcasserole|bake|lasagna|pie\b/.test(t)) return "casserole dish";
+  if (/\bsoup|stew|chili\b/.test(t)) return "simmering pot";
+  if (/\bone pan|one-pot|one pot|skillet\b/.test(t)) return "one pan";
+  if (/\bchicken\b/.test(t)) return "chicken";
+  if (/\bbeef\b/.test(t)) return "beef";
+  if (/\bpork\b/.test(t)) return "pork";
+  if (/\bturkey\b/.test(t)) return "turkey";
+  if (/\brice\b/.test(t)) return "rice";
+  if (/\bpotato(?:es)?\b/.test(t)) return "potatoes";
+  return "this dish";
+}
+
+function enforceWordRange(text: string, minWords: number, maxWords: number, fillers: string[]): string {
+  const normalized = normalizeCaptionBody(text);
+  let words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length > maxWords) words = words.slice(0, maxWords);
+  let idx = 0;
+  while (words.length < minWords && idx < fillers.length) {
+    words.push(...fillers[idx].split(/\s+/).filter(Boolean));
+    idx += 1;
+    if (words.length > maxWords) words = words.slice(0, maxWords);
+  }
+  return words.join(" ");
+}
+
+function avoidWeakFiller(text: string): string {
+  const lower = text.toLowerCase();
+  const weak = [" cozy ", " easy ", " homemade ", " comfort "];
+  let out = ` ${normalizeCaptionBody(text)} `;
+  let used = 0;
+  for (const w of weak) {
+    if (lower.includes(w.trim())) {
+      used += 1;
+      if (used > 1) {
+        const re = new RegExp(`\\b${w.trim()}\\b`, "i");
+        out = out.replace(re, "").replace(/\s+/g, " ");
+      }
+    }
+  }
+  return out.trim();
+}
+
 function recipeDishPhrase(title: string): string {
   const t = title.toLowerCase();
   if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "slow-cooker dinner";
@@ -208,28 +293,40 @@ function inferRecipeAction(title: string): string {
   return "Mix";
 }
 
-function buildRecipePatternCaptionBodies(title: string): string[] {
+function buildRecipePatternCaptionBodies(
+  title: string,
+  tone: CaptionTone,
+  styleMode: CaptionStyleMode
+): string[] {
   const seed = titleSeed(title);
   const action = inferRecipeAction(title);
   const count = ingredientCountPhrase(title);
   const ingredient = recipeMainIngredient(title);
   const overTarget = ingredient === "dinner" ? "everything" : ingredient;
   const dish = recipeDishPhrase(title);
+  const detail = recipeConcreteDetail(title);
+
+  const toneOpeners: Record<CaptionTone, string[]> = {
+    curiosity: ["Most people miss this step", "This trick changes everything", "Try this once and see"],
+    comfort: ["Old-school flavor done right", "Sunday-dinner energy", "Classic taste, simple method"],
+    bold: ["Stop overcomplicating dinner", "This one wins every time", "No-fail dinner move"],
+    question: ["Ever tried this dinner shortcut", "Why does this method work so well", "Can dinner really be this simple"]
+  };
 
   const actionPayoffs = [
     "for a weeknight win",
-    "for comfort flavor without the work",
-    "for a hearty meal everyone asks for again",
-    "for a dinner that disappears fast"
+    "for big flavor without extra work",
+    "for the dinner everyone asks for again",
+    "for a plate that disappears fast"
   ];
   const comfortOpeners = [
-    "Old-school comfort flavor",
-    "Grandma-style cozy taste",
+    "Old-school flavor",
+    "Grandma-style taste",
     "Sunday-supper vibes",
-    "Homestyle comfort in every bite"
+    "Homestyle dinner in every bite"
   ];
   const comfortSimple = [
-    "with simple steps and almost no prep",
+    "with simple steps and barely any prep",
     "using easy pantry staples and one easy method",
     "with a no-fuss method anyone can pull off",
     "without a long ingredient list or extra work"
@@ -241,32 +338,52 @@ function buildRecipePatternCaptionBodies(title: string): string[] {
     "that keeps everyone coming back"
   ];
   const socialProof = [
-    "My family asked for seconds and this was almost effortless",
-    "I served this once and now they request it every week",
-    "Everyone at the table went back for more and prep was easy",
-    "This got repeat requests immediately and the prep is so simple"
+    "My family asked for seconds before I sat down",
+    "I made this once and now they request it weekly",
+    "This vanished first at dinner and everyone wanted the method",
+    "Everyone asked how I made this and prep stayed simple"
   ];
 
-  const family1 = [
-    `${action} ${count} over ${overTarget} ${pickBySeed(actionPayoffs, seed, 3)}`,
+  const topPerformerAction = [
+    `${action} ${count} over ${overTarget} for a dinner that disappears fast`,
+    `${action} ${count} into ${detail} for the weeknight win`,
+    `${action} ${count} and let this ${dish} handle dinner`
+  ];
+  const standardAction = [
+    `${pickBySeed(toneOpeners[tone], seed, 1)} ${action.toLowerCase()} ${count} over ${overTarget}`,
     `${action} ${count} together ${pickBySeed(actionPayoffs, seed, 7)}`,
     `${action} ${count} for this ${dish} ${pickBySeed(actionPayoffs, seed, 11)}`
   ];
+  const family1 = styleMode === "top_performer" ? topPerformerAction : standardAction;
+
   const family2 = [
-    `${pickBySeed(comfortOpeners, seed, 5)} ${pickBySeed(comfortSimple, seed, 9)} ${pickBySeed(comfortPayoffs, seed, 13)}`,
+    `${pickBySeed(comfortOpeners, seed, 5)} ${pickBySeed(comfortSimple, seed, 9)} with ${detail}`,
     `${pickBySeed(comfortOpeners, seed, 17)} ${pickBySeed(comfortSimple, seed, 19)} ${pickBySeed(comfortPayoffs, seed, 23)}`
   ];
   const family3 = [
     pickBySeed(socialProof, seed, 29),
-    `${pickBySeed(socialProof, seed, 31)} and it still tasted totally homemade`,
-    `They kept asking who made this ${dish} because it is that easy to pull off`
+    `${pickBySeed(socialProof, seed, 31)} and cleanup stayed easy`,
+    `They kept asking who made this ${dish} after the first bite`
   ];
 
-  return [
+  const candidates = [
     pickBySeed(family1, seed, 2),
     pickBySeed(family2, seed, 4),
     pickBySeed(family3, seed, 6).replace(/\s+/g, " ").trim().replace(/\.$/, "")
   ];
+  const usedNow = new Set<string>();
+  const selected = candidates.map((line, idx) => {
+    const fallbackPool = ["for dinner", "tonight", "with no extra stress"];
+    let candidate = avoidWeakFiller(enforceWordRange(line, 8, 14, fallbackPool));
+    if (isRecentlyUsed(candidate) || usedNow.has(historyKey(candidate))) {
+      const rotationPools = [family1, family2, family3];
+      candidate = pickBySeed(rotationPools[idx], seed + 11, idx + 17);
+      candidate = avoidWeakFiller(enforceWordRange(candidate, 8, 14, fallbackPool));
+    }
+    usedNow.add(historyKey(candidate));
+    return candidate;
+  });
+  return selected;
 }
 
 function houseStyleBodies(type: InputType): string[] {
@@ -280,8 +397,14 @@ function houseStyleBodies(type: InputType): string[] {
   ];
 }
 
-function buildRecipePatternCaptions(title: string): string[] {
-  return buildRecipePatternCaptionBodies(title).map((body) =>
+function buildRecipePatternCaptions(
+  title: string,
+  tone: CaptionTone,
+  styleMode: CaptionStyleMode
+): string[] {
+  const bodies = buildRecipePatternCaptionBodies(title, tone, styleMode);
+  rememberRecipeCaptions(bodies);
+  return bodies.map((body) =>
     normalizeCaption(clampWords(normalizeCaptionBody(body), 18), "recipe")
   );
 }
@@ -442,7 +565,9 @@ function coerceGenerated(
   type: InputType,
   title: string,
   ratio: AspectRatio,
-  recipeImageFocus: RecipeImageFocus
+  recipeImageFocus: RecipeImageFocus,
+  captionTone: CaptionTone,
+  captionStyleMode: CaptionStyleMode
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -499,7 +624,10 @@ function coerceGenerated(
     defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 14), type));
   }
 
-  const mergedCaptionOptions = type === "recipe" ? buildRecipePatternCaptions(title) : defaultMergedOptions;
+  const mergedCaptionOptions =
+    type === "recipe"
+      ? buildRecipePatternCaptions(title, captionTone, captionStyleMode)
+      : defaultMergedOptions;
   const captionOnlyOptions: string[] = [];
 
   return {
@@ -605,6 +733,8 @@ export async function POST(req: NextRequest) {
     const type = normalizeType(body.type);
     const ratio = normalizeAspectRatio(body.aspectRatio);
     const recipeImageFocus = normalizeRecipeImageFocus(body.recipeImageFocus);
+    const captionTone = normalizeCaptionTone(body.captionTone);
+    const captionStyleMode = normalizeCaptionStyleMode(body.captionStyleMode);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -624,11 +754,21 @@ export async function POST(req: NextRequest) {
       link: link || undefined,
       linkData,
       aspectRatio: ratio,
-      recipeImageFocus
+      recipeImageFocus,
+      captionTone,
+      captionStyleMode
     });
 
     const generatedRaw = await callOpenAI(STYLE_RULES, userPrompt);
-    const generated = coerceGenerated(generatedRaw, type, resolvedTitle, ratio, recipeImageFocus);
+    const generated = coerceGenerated(
+      generatedRaw,
+      type,
+      resolvedTitle,
+      ratio,
+      recipeImageFocus,
+      captionTone,
+      captionStyleMode
+    );
 
     return NextResponse.json(
       {
@@ -637,7 +777,9 @@ export async function POST(req: NextRequest) {
           title: resolvedTitle,
           link: link || null,
           aspectRatio: ratio,
-          recipeImageFocus: type === "recipe" ? recipeImageFocus : null
+          recipeImageFocus: type === "recipe" ? recipeImageFocus : null,
+          captionTone,
+          captionStyleMode
         },
         generated
       },
