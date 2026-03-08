@@ -111,11 +111,16 @@ function buildUserPrompt(input: {
       caption_strategy: {
         source: "top-engagement analysis",
         first_line_target_words: "18-24 (occasionally up to 28)",
+        diction_goal: "high-variety colloquial social voice; avoid repetitive sterile phrasing",
         recipe_cta_mix: [
           "Full recipe 👇 💬",
           "Recipe in comments ⬇️",
           "Recipe in first comment 👇"
         ],
+        lexical_bank: {
+          reaction_tokens: REACTION_TOKEN_POOL,
+          social_tokens: SOCIAL_TOKEN_POOL
+        },
         target_patterns: [
           "first-person testimonial voice",
           "family/social proof mention",
@@ -144,6 +149,65 @@ function titleSeed(title: string): number {
   return hash;
 }
 
+const REACTION_TOKEN_POOL = [
+  "OMG",
+  "one bite and we were hooked",
+  "gone in minutes",
+  "plates were empty fast",
+  "could not stop eating it",
+  "so good it is dangerous",
+  "angels sing moment",
+  "everyone licked the spoon",
+  "the smell was unreal",
+  "pure comfort in every bite",
+  "priceless reaction at the table",
+  "we could not believe how good it was",
+  "instant favorite",
+  "ridiculously good",
+  "crazy good flavor",
+  "that first bite sold everyone",
+  "it vanished before seconds were served",
+  "mouthwatering from the first spoonful",
+  "tastebuds went wild",
+  "better than expected"
+];
+
+const SOCIAL_TOKEN_POOL = [
+  "everyone asked for seconds",
+  "my husband asked for this again",
+  "my kids cleaned their plates",
+  "neighbors asked what smelled so good",
+  "party guests kept asking for the recipe",
+  "family table favorite",
+  "potluck winner",
+  "birthday crowd loved it",
+  "friends begged for the method",
+  "the whole house loved it",
+  "my mom asked me to make it again",
+  "my dad went back for more",
+  "weeknight hit at my house",
+  "holiday table approved",
+  "church supper style favorite",
+  "cookout crowd favorite",
+  "everyone at dinner wanted the recipe",
+  "my sister asked for this on repeat",
+  "my grandson asked for another bowl",
+  "our guests wiped the dish clean"
+];
+
+const DIVERSE_OPENER_POOL = [
+  "I was not expecting this",
+  "Real talk",
+  "No joke",
+  "I have to share this",
+  "This one surprised me",
+  "I made this once",
+  "I thought this was hype",
+  "Confession",
+  "Quick story",
+  "Hot take"
+];
+
 function clampWordRange(text: string, minWords: number, maxWords: number, fillers: string[]): string {
   let words = text.split(/\s+/).filter(Boolean);
   if (words.length > maxWords) words = words.slice(0, maxWords);
@@ -154,6 +218,77 @@ function clampWordRange(text: string, minWords: number, maxWords: number, filler
     i += 1;
   }
   return words.join(" ");
+}
+
+function pickSeeded(values: string[], seed: number): string {
+  if (!values.length) return "";
+  return values[seed % values.length];
+}
+
+function hasTokenFromPool(text: string, pool: string[]): boolean {
+  const low = text.toLowerCase();
+  return pool.some((token) => low.includes(token.toLowerCase()));
+}
+
+function stemKey(text: string): string {
+  return normalizeCaptionBody(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 5)
+    .join(" ");
+}
+
+function enrichCaptionBody(body: string, type: InputType, index: number, title: string): string {
+  let line = normalizeCaptionBody(body);
+  if (!line) return line;
+
+  if (type === "recipe") {
+    const hasReaction = hasTokenFromPool(line, REACTION_TOKEN_POOL);
+    const hasSocial = hasTokenFromPool(line, SOCIAL_TOKEN_POOL);
+    if (!hasReaction && !hasSocial) {
+      const mixPool =
+        ((titleSeed(title) + index) % 2 === 0 ? REACTION_TOKEN_POOL : SOCIAL_TOKEN_POOL);
+      const token = pickSeeded(mixPool, titleSeed(title) + index * 7);
+      line = `${line}, ${token}`;
+    }
+  }
+
+  return clampWordRange(
+    line,
+    18,
+    28,
+    ["for dinner tonight", "at my house", "this week"]
+  );
+}
+
+function postProcessCaptionBodies(bodies: string[], type: InputType, title: string): string[] {
+  const out: string[] = [];
+  const seenStem = new Set<string>();
+  const seenExact = new Set<string>();
+
+  for (let i = 0; i < bodies.length; i++) {
+    let line = enrichCaptionBody(bodies[i], type, i, title);
+    if (!line) continue;
+
+    const key = normalizeCaptionBody(line).toLowerCase();
+    const sKey = stemKey(line);
+    if (seenExact.has(key) || seenStem.has(sKey)) {
+      const opener = pickSeeded(DIVERSE_OPENER_POOL, titleSeed(title) + i * 13);
+      line = `${opener}: ${line}`.replace(/\s+/g, " ");
+      line = enrichCaptionBody(line, type, i + 31, title);
+    }
+
+    const finalKey = normalizeCaptionBody(line).toLowerCase();
+    const finalStem = stemKey(line);
+    if (seenExact.has(finalKey)) continue;
+    seenExact.add(finalKey);
+    seenStem.add(finalStem);
+    out.push(line);
+  }
+
+  return out;
 }
 
 function canonicalRecipeCta(input: string | null, index: number, title: string): string {
@@ -195,12 +330,7 @@ function normalizeCaption(caption: string, type: InputType, index = 0, title = "
       ? canonicalRecipeCta(secondLineRaw, index, title)
       : canonicalArticleCta(secondLineRaw);
 
-  firstLine = clampWordRange(
-    firstLine,
-    18,
-    28,
-    ["for dinner", "this week", "at my house"]
-  );
+  firstLine = clampWordRange(firstLine, 18, 28, ["for dinner", "this week", "at my house"]);
   firstLine = firstLine.replace(/[.。]\s*$/, "");
 
   return `${firstLine}.\n${cta}`;
@@ -221,10 +351,6 @@ function clampWords(text: string, maxWords = 15): string {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return text;
   return words.slice(0, maxWords).join(" ");
-}
-
-function buildMergedCaption(body: string, type: InputType): string {
-  return normalizeCaption(body, type);
 }
 
 function uniqueNonEmpty(values: string[]): string[] {
@@ -488,25 +614,31 @@ function coerceGenerated(
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 5) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
   while (captions.length < 5) captions.push(fallbackCaption);
-  const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 28));
-  const houseBodies = houseStyleBodies(type).map((c) => clampWords(normalizeCaptionBody(c), 28));
-
-  const defaultMergedOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => buildMergedCaption(body, type))).slice(0, 5);
+  const shortCaptionBodies = captions.map((c) => normalizeCaptionBody(c)).filter(Boolean);
+  const houseBodies = houseStyleBodies(type).map((c) => normalizeCaptionBody(c)).filter(Boolean);
+  const defaultBodies = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => normalizeCaptionBody(body))).slice(0, 10);
+  const processedDefaultBodies = postProcessCaptionBodies(defaultBodies, type, title).slice(0, 5);
+  const defaultMergedOptions = processedDefaultBodies.map((body, idx) =>
+    normalizeCaption(body, type, idx, title)
+  );
   while (defaultMergedOptions.length < 5) {
-    defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 28), type));
+    defaultMergedOptions.push(normalizeCaption(fallbackCaption, type, defaultMergedOptions.length, title));
   }
 
   const rawCaptionOptions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean) : [];
   const normalizedFromModel = uniqueNonEmpty(
     rawCaptionOptions
       .map((c) => normalizeCaptionBody(c))
-      .map((c) => clampWords(c, 28))
       .filter(Boolean)
-  ).map((body, idx) => normalizeCaption(body, type, idx, title));
+  );
+  const processedModelBodies = postProcessCaptionBodies(normalizedFromModel, type, title);
+  const finalizedModelCaptions = processedModelBodies
+    .slice(0, 5)
+    .map((body, idx) => normalizeCaption(body, type, idx, title));
 
   const mergedCaptionOptions =
-    normalizedFromModel.length > 0
-      ? normalizedFromModel.slice(0, 5)
+    finalizedModelCaptions.length > 0
+      ? finalizedModelCaptions
       : defaultMergedOptions.slice(0, 5);
   const captionOnlyOptions: string[] = [];
 

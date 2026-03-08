@@ -55,6 +55,7 @@ Hard rules:
    - Include concrete title detail (ingredient/tool/method/count) in most options.
    - Generate exactly 5 distinct options with clearly different wording.
    - Avoid repetitive filler phrases and avoid duplicate sentence structures.
+   - Keep diction broad and varied; do not recycle the same 5-10 words across options.
    - Keep every option CTA-ready (line 2 exact CTA string).
 17) Build the 5 options with this mix:
    - Option 1: first-person testimonial + strong reaction
@@ -67,6 +68,11 @@ Hard rules:
    - "Full recipe 👇 💬"
    - "Recipe in comments ⬇️"
    - "Recipe in first comment 👇"
+19) Viral token requirement:
+   - Every recipe caption must contain at least one reaction token OR one social token.
+   - Reaction examples (use broad variety): OMG, one bite, gone in minutes, plates were empty, smell was unreal, instant favorite, crazy good flavor, priceless reaction.
+   - Social examples (use broad variety): everyone asked for seconds, husband asked again, kids cleaned their plates, neighbors asked what smelled good, party guests asked for recipe.
+   - Do not overuse any single token; rotate vocabulary across the 5 options.
 
 Output must be valid JSON only (no markdown), with this shape:
 {
