@@ -11,20 +11,19 @@ Hard rules:
    - "photo_prompt": no text overlay.
    - "text_overlay_prompt": bold headline overlay image.
 4) The visual style should match this pattern:
-   - warm natural light
-   - close or medium-close framing, slightly zoomed-in on the recipe/food
-   - cozy home-kitchen realism
-   - practical step/ingredient context (not generic stock glamour)
-   - stay in food/cooking/kitchen domain
-   - casual smartphone-photo feel: slight handheld perspective and mildly imperfect framing
-   - recipe camera angle should feel like smartphone capture from about 40-55 degrees above the food
-   - lived-in kitchen details with casual utensil placement and slight home-cooking imperfection
-   - side window light with soft uneven highlights and shadows (not studio light)
-   - realistic food texture: irregular browning, bubbling sauces/oil, uneven seasoning, light natural splashes
-   - include in-progress cooking action in recipe prompts (pouring, stirring, layering, sprinkling, scooping, lifting)
-   - prefer human interaction in recipe shots when natural (hand pouring sauce, spoon lifting food, fork pulling meat)
-   - keep food dominant with tight crop so it fills most of the frame
-   - avoid food-magazine styling, perfect symmetry, and overly clean staged scenes
+   - photorealistic casual home-kitchen cooking photo in portrait 4:5 (1080x1350) by default
+   - casual smartphone kitchen photo with slightly handheld perspective
+   - camera angle around 40-55 degrees above the food
+   - close or medium-close composition with tight crop so food dominates frame
+   - for recipe posts, scene must be in-progress cooking action, never finished plated dish
+   - action examples to rotate: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan
+   - realistic food textures: irregular browning, bubbling sauce/oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, natural imperfections
+   - warm natural side window light with soft shadows and uneven highlights (not studio)
+   - realistic home kitchen context with prep bowls, utensils, ingredients, cutting boards, cookware casually nearby
+   - allow slight cooking mess cues (small splashes, crumbs, steam, grease bubbles, sauce drips)
+   - smartphone-like shallow depth of field: main food sharp, background softly blurred
+   - occasionally include a hand interacting with food when natural
+   - avoid food-magazine styling, perfect symmetry, studio lighting, and overly staged clean kitchens
 5) Captions must sound conversational and curiosity-led.
 6) For recipe posts, CTA line must be exactly: "Full recipe 👇 💬"
 7) For article posts, CTA line must be exactly: "Full article 👇 💬"
@@ -37,12 +36,10 @@ Hard rules:
 9) Do not use emojis except the CTA line emoji.
 10) No hashtags unless explicitly requested.
 11) For text overlay prompt, include explicit overlay spec:
-   - recipe: medium hook sentence (not short title) with ingredient-count/payoff language, bold black sans-serif on white rounded rectangle banner, top/upper-middle
+   - recipe: curiosity-driven hook sentence (10-18 words) referencing the recipe, bold black sans-serif on white rounded rectangle banner, top/upper-middle
    - article: bold light sans-serif on dark translucent box, centered/upper-middle, 1-2 lines
    - no logos/watermarks
-12) For recipe posts, strictly honor "recipe_image_focus":
-   - if "step_or_ingredient": show in-progress prep/action (adding, pouring, layering, mixing), avoid finished plated dish.
-   - if "final_dish": show cooked finished dish presentation.
+12) For recipe posts, always prioritize active prep/cooking moment and texture detail over plated presentation.
 13) Visual profile constraints from historical analysis:
    - recipe: mostly photo-first, warm tones, practical close framing, kitchen realism, low text-overlay usage.
    - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
@@ -82,6 +79,16 @@ Hard rules:
    - Reaction examples (use broad variety): OMG, one bite, gone in minutes, plates were empty, smell was unreal, instant favorite, crazy good flavor, priceless reaction.
    - Social examples (use broad variety): everyone asked for seconds, husband asked again, kids cleaned their plates, neighbors asked what smelled good, party guests asked for recipe.
    - Do not overuse any single token; rotate vocabulary across the 5 options.
+20) Recipe image prompt structure should be complete and ordered:
+   - base photorealistic home-kitchen image description
+   - smartphone camera angle and framing
+   - explicit in-progress cooking action
+   - food texture realism details
+   - natural kitchen lighting
+   - home environment + slight cooking mess details
+   - smartphone depth-of-field behavior
+   - overlay headline instruction (for text_overlay_prompt only)
+   - realism/staging constraints
 
 Output must be valid JSON only (no markdown), with this shape:
 {

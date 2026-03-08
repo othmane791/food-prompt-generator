@@ -131,12 +131,26 @@ function buildUserPrompt(input: {
         max_options: 5
       },
       recipe_image_strategy: {
-        framing: "close or medium-close, tight crop so food fills most of frame",
-        camera_angle: "smartphone perspective around 40-55 degrees above food",
-        motion: "in-progress cooking action (pouring, stirring, layering, sprinkling, scooping, lifting)",
-        realism: "irregular browning, bubbling sauce/oil, uneven seasoning, slight home-cooking splashes",
-        human_touch: "prefer visible hand interaction when natural (hand pouring, spoon lifting, fork pulling)",
-        lighting: "warm side window light, soft shadows, uneven highlights, non-studio"
+        framing: "close or medium-close composition, tight crop so food fills most of frame",
+        camera_angle: "casual smartphone angle around 40-55 degrees above food with slight handheld feel",
+        cooking_moment: "always in-progress action, never finished plated dish",
+        action_pool: [
+          "pouring sauce",
+          "sprinkling seasoning",
+          "stirring",
+          "scooping with a spoon",
+          "lifting food with a spatula",
+          "drizzling butter or oil",
+          "adding cheese",
+          "layering ingredients",
+          "mixing",
+          "serving from a pan"
+        ],
+        realism: "irregular browning, bubbling sauce/oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, natural imperfections",
+        environment: "real home kitchen context with prep bowls, utensils, ingredients, cookware, slight cooking mess (steam, crumbs, splashes, drips)",
+        human_touch: "occasionally include a hand interacting with food",
+        lighting: "warm side window light, soft shadows, uneven highlights, non-studio",
+        depth_of_field: "smartphone-style shallow depth; main food sharp, background softly blurred"
       },
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
@@ -527,11 +541,29 @@ function houseStyleBodies(type: InputType): string[] {
   ];
 }
 
-function recipeFocusSentence(focus: RecipeImageFocus): string {
-  if (focus === "final_dish") {
-    return "Show a finished cooked dish presentation, ready to serve.";
-  }
-  return "Show an in-progress prep/ingredient action moment (adding, pouring, layering, mixing), before final serving; avoid finished plated dish.";
+const RECIPE_ACTION_MOMENTS = [
+  "pouring sauce over the ingredients",
+  "sprinkling seasoning across the pan",
+  "stirring the mixture while it bubbles",
+  "scooping and folding with a spoon",
+  "lifting food with a spatula from the pan",
+  "drizzling butter or oil over the recipe",
+  "adding cheese while it melts into the dish",
+  "layering ingredients into the baking dish",
+  "mixing ingredients together in the pan",
+  "serving directly from the hot pan"
+];
+
+const RECIPE_HAND_INTERACTIONS = [
+  "Include a hand pouring sauce",
+  "Include a hand sprinkling seasoning",
+  "Include a hand stirring with a spoon",
+  "Include a hand lifting a bite with a spatula",
+  "Include a hand serving from the pan"
+];
+
+function recipeFocusSentence(): string {
+  return "Show an in-progress cooking moment only, never a finished plated dish.";
 }
 
 function recipeMainIngredient(title: string): string {
@@ -547,15 +579,30 @@ function recipeMainIngredient(title: string): string {
 }
 
 function recipeOverlaySentence(title: string): string {
-  const count = ingredientCountPhrase(title);
+  const count = ingredientCountPhrase(title).replace(/^just\s+/i, "");
   const ingredient = recipeMainIngredient(title);
-  const action = inferRecipeAction(title).toLowerCase();
+  const seed = titleSeed(`${title}:overlay`);
+  const ingredientLabel = ingredient === "dinner" ? "this dinner" : ingredient;
+  const templates = [
+    `Why does this ${ingredientLabel} turn into the easiest comfort dinner everyone asks for again`,
+    `${count} ingredients, one pan, and this ${ingredientLabel} disappears faster than expected`,
+    `What makes this ${ingredientLabel} so addictive even with such simple pantry ingredients`,
+    `This easy ${ingredientLabel} trick keeps everyone asking for seconds at dinner`,
+    `The reason this ${ingredientLabel} tastes homemade with almost no prep surprised me`
+  ];
+  const raw = templates[seed % templates.length];
+  return clampWordRange(raw, 10, 18, ["for dinner tonight", "at home"]).replace(/[.。]\s*$/, "");
+}
 
-  if (ingredient === "beef" || ingredient === "chicken" || ingredient === "pork" || ingredient === "turkey" || ingredient === "sausage") {
-    return `${action.charAt(0).toUpperCase()}${action.slice(1)} sliced onions and ${count} over ${ingredient} for a cozy dinner everyone asks for again`;
-  }
+function recipeActionMoment(title: string, promptName: string): string {
+  const seed = titleSeed(`${title}:${promptName}:action`);
+  return RECIPE_ACTION_MOMENTS[seed % RECIPE_ACTION_MOMENTS.length];
+}
 
-  return `${action.charAt(0).toUpperCase()}${action.slice(1)} ${count} into this easy bake for a cozy supper everyone asks for again`;
+function recipeHandInteraction(title: string, promptName: string): string | null {
+  const seed = titleSeed(`${title}:${promptName}:hand`);
+  if (seed % 3 !== 0) return null;
+  return RECIPE_HAND_INTERACTIONS[seed % RECIPE_HAND_INTERACTIONS.length];
 }
 
 function normalizePromptText(text: string): string {
@@ -583,7 +630,7 @@ function enforceVisualProfile(
   promptName: string,
   type: InputType,
   ratioText: string,
-  recipeImageFocus: RecipeImageFocus,
+  _recipeImageFocus: RecipeImageFocus,
   title: string
 ): string {
   const name = (promptName || "").toLowerCase();
@@ -594,19 +641,29 @@ function enforceVisualProfile(
     .replace(/\s+/g, " ")
     .trim();
   const overlaySentence = recipeOverlaySentence(title);
-  const recipeRealismStyle =
-    "Photorealistic casual home-kitchen smartphone shot, slightly handheld perspective, taken around 40-55 degrees above the food. Tight framing with slight zoom so the recipe fills most of the frame. Show an in-progress cooking action moment with realistic texture details: irregular browning, bubbling sauce/oil, uneven seasoning, natural cooking imperfections, and slight home-cooking splashes. Warm natural side window light with soft shadows and uneven highlights (not studio). Real home-kitchen context with small prep bowls, utensils, and ingredients casually placed nearby. Prefer human interaction when natural (a hand pouring sauce, spoon lifting food, fork pulling meat). Avoid food-magazine styling, perfect symmetry, and overly clean staged scenes.";
+  const actionMoment = recipeActionMoment(title, name);
+  const handInteraction = recipeHandInteraction(title, name);
+  const recipeRealismStyle = [
+    `Photorealistic casual home-kitchen cooking photo, ${ratioText}.`,
+    "Casual smartphone kitchen photo with slight handheld perspective, around 40-55 degrees above the food.",
+    "Close or medium-close composition with tight framing so food fills most of the frame.",
+    `Scene: ${actionMoment}; this must be an in-progress cooking moment, never a finished plated dish.`,
+    "Food textures should look real: irregular browning, bubbling sauce or oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, and natural cooking imperfections.",
+    "Lighting: warm natural side window light with soft shadows and uneven highlights, not studio lighting.",
+    "Environment: real home kitchen context with prep bowls, utensils, ingredients, cutting boards, or cookware casually placed nearby, with slight cooking mess like small splashes, crumbs, steam, grease bubbles, or sauce drips.",
+    "Depth of field should feel like a smartphone photo: main food sharp, background softly blurred.",
+    handInteraction ? `${handInteraction} when it looks natural.` : "Human interaction can be included when it feels natural.",
+    "Avoid food-magazine styling, perfect symmetry, studio lighting, and overly clean staged kitchen scenes."
+  ].join(" ");
   const articleRealismStyle =
     "Casual smartphone kitchen-photo feel with slight handheld perspective and mildly imperfect framing. Keep composition practical and natural, with side window light, soft shadows, and realistic texture detail, while avoiding polished studio styling or perfect symmetry.";
 
   const parts: string[] = [cleaned];
 
   if (type === "recipe") {
-    parts.push(
-      "Style profile: warm natural kitchen light, cozy comfort-food tones, moderate contrast, close or medium-close framing, realistic home-kitchen texture."
-    );
+    parts.push("Style profile: realistic viral home-cooking smartphone shot focused on in-progress prep action.");
     parts.push(recipeRealismStyle);
-    parts.push(recipeFocusSentence(recipeImageFocus));
+    parts.push(recipeFocusSentence());
     if (name.includes("text_overlay")) {
       cleaned = cleaned
         .replace(/\b(text|headline)\s*:\s*["'][^"']*["']/gi, "")
@@ -614,10 +671,10 @@ function enforceVisualProfile(
         .trim();
       parts[0] = cleaned;
       parts.push(
-        `Recipe overlay spec: use one medium hook sentence (10-18 words) with ingredient-count and payoff language; bold black sans-serif text on a white rounded rectangle banner; place at top or upper-middle; keep food photo dominant and readable on mobile.`
+        "Add bold black sans-serif headline text on a white rounded rectangle banner at the top or upper-middle, mobile readable, while keeping food photo dominant."
       );
       parts.push(`Do not use the recipe title as overlay text.`);
-      parts.push(`Render this exact overlay text: "${overlaySentence}".`);
+      parts.push(`Render this exact curiosity-driven overlay hook (10-18 words): "${overlaySentence}".`);
     } else {
       parts.push("No text overlay.");
     }
@@ -649,31 +706,38 @@ function buildNanobananaPrompt(
   openAIPrompt: string,
   promptName: string,
   type: InputType,
-  recipeImageFocus: RecipeImageFocus,
+  _recipeImageFocus: RecipeImageFocus,
   title: string
 ): string {
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
-  const recipeRealismStyle =
-    "Casual smartphone kitchen photo, slightly handheld, around 40-55 degrees above the food, tight crop so food fills most of the frame. In-progress cooking moment with realistic irregular browning, bubbling sauce/oil, uneven seasoning, slight splashes, and natural home-cooking imperfection. Warm side window light with soft shadows and uneven highlights. Real home-kitchen context with prep bowls/utensils nearby. Prefer human interaction when natural (hand pouring sauce, spoon lifting). Avoid food-magazine styling, studio polish, and perfect symmetry.";
+  const actionMoment = recipeActionMoment(title, name);
+  const handInteraction = recipeHandInteraction(title, name);
+  const recipeRealismStyle = [
+    "Casual smartphone kitchen photo with slight handheld perspective and camera around 40-55 degrees above the food.",
+    "Close or medium-close composition with tight crop so the food fills most of the frame.",
+    `In-progress cooking action: ${actionMoment}; never a finished plated dish.`,
+    "Food realism: irregular browning, bubbling sauce or oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, and natural cooking imperfections.",
+    "Warm natural side-window kitchen light, soft shadows, uneven highlights, non-studio look.",
+    "Real home kitchen context with prep bowls, utensils, ingredients, cutting boards, cookware, and slight cooking mess (splashes, crumbs, steam, grease bubbles, sauce drips).",
+    "Smartphone-style shallow depth of field: main food sharp, background softly blurred.",
+    handInteraction ? `${handInteraction} when natural.` : "Human interaction may appear when natural.",
+    "Avoid food-magazine styling, perfect symmetry, studio polish, and overly staged kitchen scenes."
+  ].join(" ");
   const articleRealismStyle =
     "Casual smartphone kitchen-photo feel with slight handheld perspective, practical framing, natural side window light, and realistic texture detail. Avoid polished magazine styling and perfect symmetry.";
   const parts: string[] = [scene];
 
   if (type === "recipe") {
-    parts.push("Photoreal food photography, warm natural kitchen light, cozy home-cooking mood, detailed textures.");
+    parts.push("Photorealistic viral home-cooking smartphone image style.");
     parts.push(recipeRealismStyle);
-    if (recipeImageFocus === "step_or_ingredient") {
-      parts.push("Show in-progress ingredient/assembly step, not final plated dish.");
-    } else {
-      parts.push("Show finished cooked dish ready to serve.");
-    }
+    parts.push("Keep focus on active cooking process and textures.");
 
     if (name.includes("text_overlay")) {
       parts.push(
-        `Overlay style: bold black sans-serif text on a white rounded rectangle box at the top/upper-middle.`
+        "Overlay style: bold black sans-serif text on a white rounded rectangle banner at the top or upper-middle, mobile readable, food still dominant."
       );
-      parts.push(`Overlay text: "${recipeOverlaySentence(title)}".`);
+      parts.push(`Curiosity-driven overlay hook (10-18 words): "${recipeOverlaySentence(title)}".`);
     }
   } else {
     parts.push("Photoreal practical kitchen context, clean composition, high clarity, realistic color.");
