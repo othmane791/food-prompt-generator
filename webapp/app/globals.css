@@ -88,8 +88,13 @@ label {
   cursor: pointer;
 }
 
+.camera-angle-option:hover {
+  background: #fff7ed;
+}
+
 .camera-angle-option.active {
   border-color: var(--accent);
+  background: #f4dfce;
   box-shadow: 0 0 0 2px rgba(143, 62, 31, 0.16);
 }
 
@@ -121,7 +126,7 @@ select {
   background: #fffdf9;
 }
 
-.form button {
+.form > button[type="submit"] {
   margin-top: 0.2rem;
   border: 0;
   border-radius: 10px;
@@ -132,7 +137,7 @@ select {
   cursor: pointer;
 }
 
-.form button[disabled] {
+.form > button[type="submit"][disabled] {
   opacity: 0.5;
   cursor: not-allowed;
 }
