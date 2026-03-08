@@ -130,6 +130,14 @@ function buildUserPrompt(input: {
         ],
         max_options: 5
       },
+      recipe_image_strategy: {
+        framing: "close or medium-close, tight crop so food fills most of frame",
+        camera_angle: "smartphone perspective around 40-55 degrees above food",
+        motion: "in-progress cooking action (pouring, stirring, layering, sprinkling, scooping, lifting)",
+        realism: "irregular browning, bubbling sauce/oil, uneven seasoning, slight home-cooking splashes",
+        human_touch: "prefer visible hand interaction when natural (hand pouring, spoon lifting, fork pulling)",
+        lighting: "warm side window light, soft shadows, uneven highlights, non-studio"
+      },
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
         output_language: "English",
@@ -586,8 +594,10 @@ function enforceVisualProfile(
     .replace(/\s+/g, " ")
     .trim();
   const overlaySentence = recipeOverlaySentence(title);
-  const realismStyle =
-    "Shot like a casual smartphone kitchen photo with slight handheld perspective and mildly imperfect framing. Keep the framing slightly zoomed in on the recipe so food remains the clear focus. Real home kitchen environment with natural lived-in details and casually placed utensils/ingredients, without looking messy. Side window light with soft shadows and uneven highlights, not studio lighting. Highly realistic food texture with irregular browning, bubbling sauce, tiny oil droplets, and natural seasoning variation. Avoid food-magazine styling, perfect symmetry, or overly clean staged scenes.";
+  const recipeRealismStyle =
+    "Photorealistic casual home-kitchen smartphone shot, slightly handheld perspective, taken around 40-55 degrees above the food. Tight framing with slight zoom so the recipe fills most of the frame. Show an in-progress cooking action moment with realistic texture details: irregular browning, bubbling sauce/oil, uneven seasoning, natural cooking imperfections, and slight home-cooking splashes. Warm natural side window light with soft shadows and uneven highlights (not studio). Real home-kitchen context with small prep bowls, utensils, and ingredients casually placed nearby. Prefer human interaction when natural (a hand pouring sauce, spoon lifting food, fork pulling meat). Avoid food-magazine styling, perfect symmetry, and overly clean staged scenes.";
+  const articleRealismStyle =
+    "Casual smartphone kitchen-photo feel with slight handheld perspective and mildly imperfect framing. Keep composition practical and natural, with side window light, soft shadows, and realistic texture detail, while avoiding polished studio styling or perfect symmetry.";
 
   const parts: string[] = [cleaned];
 
@@ -595,7 +605,7 @@ function enforceVisualProfile(
     parts.push(
       "Style profile: warm natural kitchen light, cozy comfort-food tones, moderate contrast, close or medium-close framing, realistic home-kitchen texture."
     );
-    parts.push(realismStyle);
+    parts.push(recipeRealismStyle);
     parts.push(recipeFocusSentence(recipeImageFocus));
     if (name.includes("text_overlay")) {
       cleaned = cleaned
@@ -615,7 +625,7 @@ function enforceVisualProfile(
     parts.push(
       "Style profile: cleaner composition, slightly higher color pop, simplified background, practical food/kitchen context."
     );
-    parts.push(realismStyle);
+    parts.push(articleRealismStyle);
     if (name.includes("text_overlay")) {
       parts.push(
         "Use bold light headline text (1-2 lines) on a dark translucent box, centered or upper-middle, mobile readable."
@@ -644,13 +654,15 @@ function buildNanobananaPrompt(
 ): string {
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
-  const realismStyle =
-    "Casual smartphone kitchen-photo feel, slight handheld perspective, mildly imperfect framing, and slightly zoomed-in food focus. Real home-kitchen context with natural lived-in details and casual utensil placement (not staged, not messy). Side window light with soft uneven highlights. Realistic texture details like irregular browning, bubbling sauce, and tiny oil droplets. Avoid polished magazine styling and perfect symmetry.";
+  const recipeRealismStyle =
+    "Casual smartphone kitchen photo, slightly handheld, around 40-55 degrees above the food, tight crop so food fills most of the frame. In-progress cooking moment with realistic irregular browning, bubbling sauce/oil, uneven seasoning, slight splashes, and natural home-cooking imperfection. Warm side window light with soft shadows and uneven highlights. Real home-kitchen context with prep bowls/utensils nearby. Prefer human interaction when natural (hand pouring sauce, spoon lifting). Avoid food-magazine styling, studio polish, and perfect symmetry.";
+  const articleRealismStyle =
+    "Casual smartphone kitchen-photo feel with slight handheld perspective, practical framing, natural side window light, and realistic texture detail. Avoid polished magazine styling and perfect symmetry.";
   const parts: string[] = [scene];
 
   if (type === "recipe") {
     parts.push("Photoreal food photography, warm natural kitchen light, cozy home-cooking mood, detailed textures.");
-    parts.push(realismStyle);
+    parts.push(recipeRealismStyle);
     if (recipeImageFocus === "step_or_ingredient") {
       parts.push("Show in-progress ingredient/assembly step, not final plated dish.");
     } else {
@@ -665,7 +677,7 @@ function buildNanobananaPrompt(
     }
   } else {
     parts.push("Photoreal practical kitchen context, clean composition, high clarity, realistic color.");
-    parts.push(realismStyle);
+    parts.push(articleRealismStyle);
     if (name.includes("text_overlay")) {
       parts.push(
         `Overlay style: bold light sans-serif text on a dark translucent box at upper-middle, 1-2 lines.`

@@ -17,10 +17,13 @@ Hard rules:
    - practical step/ingredient context (not generic stock glamour)
    - stay in food/cooking/kitchen domain
    - casual smartphone-photo feel: slight handheld perspective and mildly imperfect framing
-   - lived-in kitchen details with casual utensil placement, but still visually clean
+   - recipe camera angle should feel like smartphone capture from about 40-55 degrees above the food
+   - lived-in kitchen details with casual utensil placement and slight home-cooking imperfection
    - side window light with soft uneven highlights and shadows (not studio light)
-   - realistic food texture: irregular browning, bubbling sauces, uneven seasoning
-   - avoid visible mess cues like heavy drips/splatters/crumb clutter
+   - realistic food texture: irregular browning, bubbling sauces/oil, uneven seasoning, light natural splashes
+   - include in-progress cooking action in recipe prompts (pouring, stirring, layering, sprinkling, scooping, lifting)
+   - prefer human interaction in recipe shots when natural (hand pouring sauce, spoon lifting food, fork pulling meat)
+   - keep food dominant with tight crop so it fills most of the frame
    - avoid food-magazine styling, perfect symmetry, and overly clean staged scenes
 5) Captions must sound conversational and curiosity-led.
 6) For recipe posts, CTA line must be exactly: "Full recipe 👇 💬"
