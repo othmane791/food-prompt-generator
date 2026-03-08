@@ -57,17 +57,17 @@ Hard rules:
    - Avoid repetitive filler phrases and avoid duplicate sentence structures.
    - Keep diction broad and varied; do not recycle the same 5-10 words across options.
    - Keep every option CTA-ready (line 2 exact CTA string).
-17) Build the 5 options with this mix:
-   - Option 1: first-person testimonial + strong reaction
-   - Option 2: nostalgia/family reference
-   - Option 3: social proof/event context (party, guests, family table)
-   - Option 4: sensory hook (smell/taste/texture)
-   - Option 5: simplicity/ease + concrete detail
-18) Recipe CTA mix:
-   - Use a mix across options, not one repeated CTA:
-   - "Full recipe 👇 💬"
-   - "Recipe in comments ⬇️"
-   - "Recipe in first comment 👇"
+17) Recipe options must map to these exact viral angles (one each, in this order):
+   - Option 1 Shock reaction: pattern like "OMG ... one bite and ..."
+   - Option 2 Family disbelief flip: pattern like "my husband/family doubted it ... then ..."
+   - Option 3 Party/social proof: pattern like "brought this to a party ... gone first"
+   - Option 4 Nostalgia hit: pattern like "tastes like what grandma made ..."
+   - Option 5 Ease + payoff brag: mention ingredient count or dump-and-go simplicity + strong payoff
+18) Keep voice bold and human:
+   - conversational first-person voice
+   - stronger emotional verbs/reactions
+   - avoid bland phrasing like "easy dinner" without a payoff
+   - no repeated sentence skeletons across options
 19) Viral token requirement:
    - Every recipe caption must contain at least one reaction token OR one social token.
    - Reaction examples (use broad variety): OMG, one bite, gone in minutes, plates were empty, smell was unreal, instant favorite, crazy good flavor, priceless reaction.

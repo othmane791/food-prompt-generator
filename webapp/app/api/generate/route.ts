@@ -208,6 +208,48 @@ const DIVERSE_OPENER_POOL = [
   "Hot take"
 ];
 
+const SHOCK_ANGLE_TOKENS = [
+  "OMG",
+  "one bite and everyone lost it",
+  "gone in minutes",
+  "plates were empty fast",
+  "angels sing moment",
+  "priceless table reaction"
+];
+
+const FAMILY_FLIP_TOKENS = [
+  "my husband doubted it",
+  "my family side-eyed it at first",
+  "my wife was skeptical at first",
+  "the kids were unsure at first",
+  "my dad said it would be average"
+];
+
+const PARTY_PROOF_TOKENS = [
+  "brought this to a party",
+  "served this at a potluck",
+  "put this out at a family gathering",
+  "made this for guests over the weekend",
+  "took this to a church supper"
+];
+
+const NOSTALGIA_TOKENS = [
+  "tastes like what grandma made",
+  "just like my mom used to make",
+  "old-school Sunday supper flavor",
+  "that first bite felt like childhood again",
+  "straight out of grandma's kitchen"
+];
+
+const EASE_BRAG_TOKENS = [
+  "just 3 ingredients",
+  "just 4 ingredients",
+  "dump-and-go style",
+  "almost no prep",
+  "just set it and forget it",
+  "ridiculously easy for weeknights"
+];
+
 function clampWordRange(text: string, minWords: number, maxWords: number, fillers: string[]): string {
   let words = text.split(/\s+/).filter(Boolean);
   if (words.length > maxWords) words = words.slice(0, maxWords);
@@ -240,6 +282,44 @@ function stemKey(text: string): string {
     .join(" ");
 }
 
+function buildRecipeViralAngle(index: number, title: string, variant = 0): string {
+  const seed = titleSeed(`${title}:${index}:${variant}`);
+  const ingredient = recipeMainIngredient(title);
+  const ingredientText = ingredient === "dinner" ? "this dish" : ingredient;
+  const count = ingredientCountPhrase(title);
+  const action = inferRecipeAction(title).toLowerCase();
+  const social = pickSeeded(SOCIAL_TOKEN_POOL, seed + 21);
+  const reaction = pickSeeded(REACTION_TOKEN_POOL, seed + 23);
+
+  if (index === 0) {
+    const shock = pickSeeded(SHOCK_ANGLE_TOKENS, seed + 1);
+    return `${shock}, one bite and ${social}; ${action} ${count} over ${ingredientText} and it disappeared fast`;
+  }
+  if (index === 1) {
+    const doubt = pickSeeded(FAMILY_FLIP_TOKENS, seed + 3);
+    return `${doubt}, then asked for seconds and told me to save this recipe, ${social}`;
+  }
+  if (index === 2) {
+    const party = pickSeeded(PARTY_PROOF_TOKENS, seed + 7);
+    return `I ${party} and it was gone first; ${social} before I even sat down`;
+  }
+  if (index === 3) {
+    const nostalgia = pickSeeded(NOSTALGIA_TOKENS, seed + 11);
+    return `${nostalgia}, and ${reaction} hit as soon as dinner reached the table`;
+  }
+  const ease = pickSeeded(EASE_BRAG_TOKENS, seed + 15);
+  return `${count}, ${ease}, and still unbelievably good; ${reaction} with almost zero effort`;
+}
+
+function lineMatchesAngle(line: string, index: number): boolean {
+  const low = line.toLowerCase();
+  if (index === 0) return /(omg|one bite|gone in minutes|plates were empty|angels sing|priceless)/.test(low);
+  if (index === 1) return /(husband|wife|family|kids|dad).*(doubt|skept|unsure|side-eye|side eyed|then|seconds)/.test(low);
+  if (index === 2) return /(party|potluck|gathering|guests|church supper).*(gone|vanish|asked|recipe|first|seconds)/.test(low);
+  if (index === 3) return /(grandma|mom|old-school|childhood|used to make)/.test(low);
+  return /(3 ingredients|4 ingredients|ingredients|dump-and-go|set it and forget it|no prep|easy).*(unbeliev|crazy good|hooked|gone|favorite|zero effort)/.test(low);
+}
+
 function enrichCaptionBody(body: string, type: InputType, index: number, title: string): string {
   let line = normalizeCaptionBody(body);
   if (!line) return line;
@@ -248,36 +328,75 @@ function enrichCaptionBody(body: string, type: InputType, index: number, title: 
     const hasReaction = hasTokenFromPool(line, REACTION_TOKEN_POOL);
     const hasSocial = hasTokenFromPool(line, SOCIAL_TOKEN_POOL);
     if (!hasReaction && !hasSocial) {
-      const mixPool =
-        ((titleSeed(title) + index) % 2 === 0 ? REACTION_TOKEN_POOL : SOCIAL_TOKEN_POOL);
+      const mixPool = ((titleSeed(title) + index) % 2 === 0 ? REACTION_TOKEN_POOL : SOCIAL_TOKEN_POOL);
       const token = pickSeeded(mixPool, titleSeed(title) + index * 7);
       line = `${line}, ${token}`;
     }
   }
 
-  return clampWordRange(
-    line,
-    18,
-    28,
-    ["for dinner tonight", "at my house", "this week"]
-  );
+  return clampWordRange(line, 18, 28, ["for dinner tonight", "at my house", "this week"]);
 }
 
 function postProcessCaptionBodies(bodies: string[], type: InputType, title: string): string[] {
   const out: string[] = [];
   const seenStem = new Set<string>();
   const seenExact = new Set<string>();
+  const targetCount = type === "recipe" ? 5 : Math.min(5, Math.max(5, bodies.length));
+  const available = bodies.map((body) => normalizeCaptionBody(body));
 
-  for (let i = 0; i < bodies.length; i++) {
-    let line = enrichCaptionBody(bodies[i], type, i, title);
+  if (type === "recipe") {
+    const usedIndices = new Set<number>();
+    for (let angle = 0; angle < 5; angle++) {
+      let picked = "";
+      let pickedIndex = -1;
+      for (let i = 0; i < available.length; i++) {
+        if (usedIndices.has(i)) continue;
+        const candidate = available[i];
+        if (!candidate) continue;
+        if (lineMatchesAngle(candidate, angle)) {
+          picked = candidate;
+          pickedIndex = i;
+          break;
+        }
+      }
+      if (pickedIndex >= 0) usedIndices.add(pickedIndex);
+      let line = picked || buildRecipeViralAngle(angle, title, angle + 1);
+      line = enrichCaptionBody(line, type, angle, title);
+      const key = normalizeCaptionBody(line).toLowerCase();
+      const sKey = stemKey(line);
+      if (seenExact.has(key) || seenStem.has(sKey)) {
+        line = enrichCaptionBody(buildRecipeViralAngle(angle, title, angle + 31), type, angle + 31, title);
+      }
+      const finalKey = normalizeCaptionBody(line).toLowerCase();
+      const finalStem = stemKey(line);
+      if (seenExact.has(finalKey)) continue;
+      seenExact.add(finalKey);
+      seenStem.add(finalStem);
+      out.push(line);
+    }
+    return out;
+  }
+
+  for (let i = 0; i < targetCount; i++) {
+    const source = normalizeCaptionBody(bodies[i] || "");
+    let line = source;
+
+    if (type === "recipe" && !lineMatchesAngle(line, i)) {
+      line = buildRecipeViralAngle(i, title, 0);
+    }
+
+    line = enrichCaptionBody(line, type, i, title);
     if (!line) continue;
 
     const key = normalizeCaptionBody(line).toLowerCase();
     const sKey = stemKey(line);
     if (seenExact.has(key) || seenStem.has(sKey)) {
-      const opener = pickSeeded(DIVERSE_OPENER_POOL, titleSeed(title) + i * 13);
-      line = `${opener}: ${line}`.replace(/\s+/g, " ");
-      line = enrichCaptionBody(line, type, i + 31, title);
+      if (type === "recipe") {
+        line = enrichCaptionBody(buildRecipeViralAngle(i, title, 17), type, i + 31, title);
+      } else {
+        const opener = pickSeeded(DIVERSE_OPENER_POOL, titleSeed(title) + i * 13);
+        line = enrichCaptionBody(`${opener}: ${line}`.replace(/\s+/g, " "), type, i + 31, title);
+      }
     }
 
     const finalKey = normalizeCaptionBody(line).toLowerCase();
@@ -392,11 +511,11 @@ function inferRecipeAction(title: string): string {
 function houseStyleBodies(type: InputType): string[] {
   if (type === "recipe") {
     return [
-      "I made this once and everyone asked for seconds before dinner was even over",
-      "My family thought this took all day, but the prep was surprisingly simple tonight",
-      "The smell alone brought everyone into the kitchen before it was even done",
-      "I brought this to a get-together and people immediately asked for the recipe",
-      "This easy method turned basic ingredients into the most requested dinner this week"
+      buildRecipeViralAngle(0, "house", 1),
+      buildRecipeViralAngle(1, "house", 2),
+      buildRecipeViralAngle(2, "house", 3),
+      buildRecipeViralAngle(3, "house", 4),
+      buildRecipeViralAngle(4, "house", 5)
     ];
   }
   return [
@@ -407,7 +526,6 @@ function houseStyleBodies(type: InputType): string[] {
     "I tried this once out of curiosity, and now I do it every single time"
   ];
 }
-
 
 function recipeFocusSentence(focus: RecipeImageFocus): string {
   if (focus === "final_dish") {
