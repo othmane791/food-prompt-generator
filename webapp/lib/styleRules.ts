@@ -49,10 +49,19 @@ Hard rules:
    - centered or upper-middle
    - 1-2 lines max, mobile readable.
 16) Caption-generation style constraints from analyzed winners:
-   - Use concrete detail from title (ingredient/tool/method/count) in most lines.
-   - Prefer direct hook openers and avoid repetitive generic filler phrasing.
-   - Provide 5 distinct options with noticeably different wording.
+   - Top performers are mostly first-person testimonial style; favor human voice over generic ad copy.
+   - Include family/social proof context often (e.g., husband, kids, party, everyone asked for more).
+   - Use sensory or reaction language (bite, smelled amazing, vanished fast, asked for seconds).
+   - Include concrete title detail (ingredient/tool/method/count) in most options.
+   - Generate exactly 5 distinct options with clearly different wording.
+   - Avoid repetitive filler phrases and avoid duplicate sentence structures.
    - Keep every option CTA-ready (line 2 exact CTA string).
+17) Build the 5 options with this mix:
+   - Option 1: first-person testimonial + strong reaction
+   - Option 2: nostalgia/family reference
+   - Option 3: social proof/event context (party, guests, family table)
+   - Option 4: sensory hook (smell/taste/texture)
+   - Option 5: simplicity/ease + concrete detail
 
 Output must be valid JSON only (no markdown), with this shape:
 {

@@ -34,11 +34,6 @@ type ApiSuccess = {
 export default function HomePage() {
   const MAX_MERGED_OPTIONS = 5;
   const MAX_CAPTION_ONLY_OPTIONS = 0;
-  const RECIPE_FAMILY_LABELS = [
-    "Action + Ingredient Count + Payoff",
-    "Comfort/Nostalgia + Simplicity + Payoff",
-    "Social Proof/Family Reaction + Ease + Payoff"
-  ];
 
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
@@ -122,19 +117,16 @@ export default function HomePage() {
           </label>
 
           {type === "recipe" ? (
-            <>
-              <label>
-                Recipe Image Focus
-                <select
-                  value={recipeImageFocus}
-                  onChange={(e) => setRecipeImageFocus(e.target.value as RecipeImageFocus)}
-                >
-                  <option value="step_or_ingredient">Step / Ingredient (Recommended)</option>
-                  <option value="final_dish">Final Dish</option>
-                </select>
-              </label>
-
-            </>
+            <label>
+              Recipe Image Focus
+              <select
+                value={recipeImageFocus}
+                onChange={(e) => setRecipeImageFocus(e.target.value as RecipeImageFocus)}
+              >
+                <option value="step_or_ingredient">Step / Ingredient (Recommended)</option>
+                <option value="final_dish">Final Dish</option>
+              </select>
+            </label>
           ) : null}
 
           <label>
@@ -219,11 +211,7 @@ export default function HomePage() {
             ) : null}
             {mergedCaptionOptions.map((m, idx) => (
               <div key={`merged-${idx}`} className="copy-item">
-                <div className="copy-label">
-                  {result.input.type === "recipe"
-                    ? RECIPE_FAMILY_LABELS[idx] || `Caption ${idx + 1}`
-                    : `Caption ${idx + 1}`}
-                </div>
+                <div className="copy-label">{`Caption ${idx + 1}`}</div>
                 <button
                   className="copy-btn"
                   type="button"

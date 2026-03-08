@@ -4,8 +4,6 @@ import { STYLE_RULES } from "@/lib/styleRules";
 type InputType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
-type CaptionTone = "curiosity" | "comfort" | "bold" | "question";
-type CaptionStyleMode = "standard" | "top_performer";
 
 type GeneratePayload = {
   type?: InputType;
@@ -48,9 +46,6 @@ function normalizeAspectRatio(value?: string): AspectRatio {
 function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {
   return value === "final_dish" ? "final_dish" : "step_or_ingredient";
 }
-
-const CAPTION_TONES: CaptionTone[] = ["curiosity", "comfort", "bold", "question"];
-const CAPTION_STYLE_MODES: CaptionStyleMode[] = ["top_performer", "standard"];
 
 function aspectLabel(ratio: AspectRatio): string {
   return ratio === "4:5" ? "portrait 4:5 (1080x1350)" : "portrait 2:3 (1080x1620)";
@@ -113,8 +108,17 @@ function buildUserPrompt(input: {
       aspect_ratio: input.aspectRatio,
       aspect_format: aspectLabel(input.aspectRatio),
       recipe_image_focus: input.recipeImageFocus,
-      caption_tones: CAPTION_TONES,
-      caption_style_modes: CAPTION_STYLE_MODES,
+      caption_strategy: {
+        source: "top-engagement analysis",
+        target_patterns: [
+          "first-person testimonial voice",
+          "family/social proof mention",
+          "reaction and sensory language",
+          "concrete detail from title",
+          "short hook + fixed CTA"
+        ],
+        max_options: 5
+      },
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
         output_language: "English",
