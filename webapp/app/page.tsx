@@ -15,8 +15,6 @@ type ApiSuccess = {
     link: string | null;
     aspectRatio?: AspectRatio;
     recipeImageFocus?: RecipeImageFocus | null;
-    captionTone?: CaptionTone;
-    captionStyleMode?: CaptionStyleMode;
   };
   generated: {
     resolved_type?: string;
@@ -31,6 +29,11 @@ type ApiSuccess = {
     caption_options?: string[];
     merged_caption_options?: string[];
     caption_only_options?: string[];
+    recipe_caption_variants?: Array<{
+      tone: CaptionTone;
+      style_mode: CaptionStyleMode;
+      captions: string[];
+    }>;
     notes?: string;
   };
 };
@@ -47,8 +50,6 @@ export default function HomePage() {
   const [type, setType] = useState<PostType>("recipe");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
-  const [captionTone, setCaptionTone] = useState<CaptionTone>("curiosity");
-  const [captionStyleMode, setCaptionStyleMode] = useState<CaptionStyleMode>("top_performer");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,15 +77,7 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          title,
-          link,
-          aspectRatio,
-          recipeImageFocus,
-          captionTone,
-          captionStyleMode
-        })
+        body: JSON.stringify({ type, title, link, aspectRatio, recipeImageFocus })
       });
 
       const data = await res.json();
@@ -148,29 +141,6 @@ export default function HomePage() {
                 </select>
               </label>
 
-              <label>
-                Caption Tone
-                <select
-                  value={captionTone}
-                  onChange={(e) => setCaptionTone(e.target.value as CaptionTone)}
-                >
-                  <option value="curiosity">Curiosity</option>
-                  <option value="comfort">Comfort</option>
-                  <option value="bold">Bold</option>
-                  <option value="question">Question-led</option>
-                </select>
-              </label>
-
-              <label>
-                Caption Style Mode
-                <select
-                  value={captionStyleMode}
-                  onChange={(e) => setCaptionStyleMode(e.target.value as CaptionStyleMode)}
-                >
-                  <option value="top_performer">Top-performer style (Recommended)</option>
-                  <option value="standard">Standard style</option>
-                </select>
-              </label>
             </>
           ) : null}
 
@@ -251,26 +221,47 @@ export default function HomePage() {
 
           <article className="panel span-2">
             <h2>Caption Options</h2>
-            {mergedCaptionOptions.length > 0 ? (
-              <p className="subhead">Ready to Post (Merged)</p>
+            {result.input.type === "recipe" && (result.generated.recipe_caption_variants || []).length > 0 ? (
+              <p className="subhead">All Tone + Style Variants</p>
             ) : null}
-            {mergedCaptionOptions.map((m, idx) => (
-              <div key={`merged-${idx}`} className="copy-item">
-                <div className="copy-label">
-                  {result.input.type === "recipe" ? RECIPE_FAMILY_LABELS[idx] || `Recipe Caption ${idx + 1}` : `Merged ${idx + 1}`}
-                </div>
-                <button
-                  className="copy-btn"
-                  type="button"
-                  onClick={() => copyText(`merged-${idx}`, m)}
-                  title="Copy merged caption"
-                  aria-label={`Copy merged caption ${idx + 1}`}
-                >
-                  {copiedKey === `merged-${idx}` ? "Copied" : "📋 Copy"}
-                </button>
-                <pre className="copy-text">{m}</pre>
-              </div>
-            ))}
+            {result.input.type === "recipe" && (result.generated.recipe_caption_variants || []).length > 0
+              ? (result.generated.recipe_caption_variants || []).map((variant, vIdx) => (
+                  <div key={`variant-${variant.tone}-${variant.style_mode}`} className="block">
+                    <h3>
+                      {variant.tone} · {variant.style_mode === "top_performer" ? "top-performer" : "standard"}
+                    </h3>
+                    {variant.captions.map((m, idx) => (
+                      <div key={`merged-${vIdx}-${idx}`} className="copy-item">
+                        <div className="copy-label">{RECIPE_FAMILY_LABELS[idx] || `Recipe Caption ${idx + 1}`}</div>
+                        <button
+                          className="copy-btn"
+                          type="button"
+                          onClick={() => copyText(`merged-${vIdx}-${idx}`, m)}
+                          title="Copy merged caption"
+                          aria-label={`Copy merged caption ${idx + 1}`}
+                        >
+                          {copiedKey === `merged-${vIdx}-${idx}` ? "Copied" : "📋 Copy"}
+                        </button>
+                        <pre className="copy-text">{m}</pre>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              : mergedCaptionOptions.map((m, idx) => (
+                  <div key={`merged-${idx}`} className="copy-item">
+                    <div className="copy-label">{`Merged ${idx + 1}`}</div>
+                    <button
+                      className="copy-btn"
+                      type="button"
+                      onClick={() => copyText(`merged-${idx}`, m)}
+                      title="Copy merged caption"
+                      aria-label={`Copy merged caption ${idx + 1}`}
+                    >
+                      {copiedKey === `merged-${idx}` ? "Copied" : "📋 Copy"}
+                    </button>
+                    <pre className="copy-text">{m}</pre>
+                  </div>
+                ))}
 
             {captionOnlyOptions.map((c, idx) => (
               <div key={`caption-only-${idx}`} className="copy-item">

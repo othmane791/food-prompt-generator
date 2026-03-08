@@ -3,7 +3,7 @@
 Web app that generates:
 - image prompts in two variants per mode (`OpenAI` + `Nanobanana v2`) for `photo_prompt` and `text_overlay_prompt`
 - 3 hook options
-- 3 caption options with recipe/article CTA style
+- recipe captions across all tone/style variants (curiosity, comfort, bold, question + top-performer/standard)
 - selectable aspect ratio per request (`2:3` or `4:5`)
 - recipe image focus control (`step_or_ingredient` or `final_dish`)
 

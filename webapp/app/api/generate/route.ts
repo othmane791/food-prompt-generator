@@ -13,8 +13,6 @@ type GeneratePayload = {
   link?: string;
   aspectRatio?: AspectRatio;
   recipeImageFocus?: RecipeImageFocus;
-  captionTone?: CaptionTone;
-  captionStyleMode?: CaptionStyleMode;
 };
 
 type LinkExtract = {
@@ -36,6 +34,11 @@ type GeneratedShape = {
   caption_options?: string[];
   merged_caption_options?: string[];
   caption_only_options?: string[];
+  recipe_caption_variants?: Array<{
+    tone: CaptionTone;
+    style_mode: CaptionStyleMode;
+    captions: string[];
+  }>;
   notes?: string;
 };
 
@@ -51,14 +54,8 @@ function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {
   return value === "final_dish" ? "final_dish" : "step_or_ingredient";
 }
 
-function normalizeCaptionTone(value?: string): CaptionTone {
-  if (value === "comfort" || value === "bold" || value === "question") return value;
-  return "curiosity";
-}
-
-function normalizeCaptionStyleMode(value?: string): CaptionStyleMode {
-  return value === "top_performer" ? "top_performer" : "standard";
-}
+const CAPTION_TONES: CaptionTone[] = ["curiosity", "comfort", "bold", "question"];
+const CAPTION_STYLE_MODES: CaptionStyleMode[] = ["top_performer", "standard"];
 
 function aspectLabel(ratio: AspectRatio): string {
   return ratio === "4:5" ? "portrait 4:5 (1080x1350)" : "portrait 2:3 (1080x1620)";
@@ -110,8 +107,6 @@ function buildUserPrompt(input: {
   linkData?: LinkExtract;
   aspectRatio: AspectRatio;
   recipeImageFocus: RecipeImageFocus;
-  captionTone: CaptionTone;
-  captionStyleMode: CaptionStyleMode;
 }): string {
   return JSON.stringify(
     {
@@ -123,8 +118,8 @@ function buildUserPrompt(input: {
       aspect_ratio: input.aspectRatio,
       aspect_format: aspectLabel(input.aspectRatio),
       recipe_image_focus: input.recipeImageFocus,
-      caption_tone: input.captionTone,
-      caption_style_mode: input.captionStyleMode,
+      caption_tones: CAPTION_TONES,
+      caption_style_modes: CAPTION_STYLE_MODES,
       instructions: {
         goal: "Drive clicks/comments while preserving practical cooking/food context style.",
         output_language: "English",
@@ -565,9 +560,7 @@ function coerceGenerated(
   type: InputType,
   title: string,
   ratio: AspectRatio,
-  recipeImageFocus: RecipeImageFocus,
-  captionTone: CaptionTone,
-  captionStyleMode: CaptionStyleMode
+  recipeImageFocus: RecipeImageFocus
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -624,9 +617,21 @@ function coerceGenerated(
     defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 14), type));
   }
 
+  const recipeCaptionVariants =
+    type === "recipe"
+      ? CAPTION_TONES.flatMap((tone) =>
+          CAPTION_STYLE_MODES.map((styleMode) => ({
+            tone,
+            style_mode: styleMode,
+            captions: buildRecipePatternCaptions(title, tone, styleMode)
+          }))
+        )
+      : [];
+
   const mergedCaptionOptions =
     type === "recipe"
-      ? buildRecipePatternCaptions(title, captionTone, captionStyleMode)
+      ? recipeCaptionVariants.find((v) => v.tone === "curiosity" && v.style_mode === "top_performer")?.captions ||
+        buildRecipePatternCaptions(title, "curiosity", "top_performer")
       : defaultMergedOptions;
   const captionOnlyOptions: string[] = [];
 
@@ -638,6 +643,7 @@ function coerceGenerated(
     caption_options: mergedCaptionOptions,
     merged_caption_options: mergedCaptionOptions,
     caption_only_options: captionOnlyOptions,
+    recipe_caption_variants: recipeCaptionVariants,
     notes:
       src.notes?.trim() ||
       (type === "recipe"
@@ -733,8 +739,6 @@ export async function POST(req: NextRequest) {
     const type = normalizeType(body.type);
     const ratio = normalizeAspectRatio(body.aspectRatio);
     const recipeImageFocus = normalizeRecipeImageFocus(body.recipeImageFocus);
-    const captionTone = normalizeCaptionTone(body.captionTone);
-    const captionStyleMode = normalizeCaptionStyleMode(body.captionStyleMode);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -754,21 +758,11 @@ export async function POST(req: NextRequest) {
       link: link || undefined,
       linkData,
       aspectRatio: ratio,
-      recipeImageFocus,
-      captionTone,
-      captionStyleMode
+      recipeImageFocus
     });
 
     const generatedRaw = await callOpenAI(STYLE_RULES, userPrompt);
-    const generated = coerceGenerated(
-      generatedRaw,
-      type,
-      resolvedTitle,
-      ratio,
-      recipeImageFocus,
-      captionTone,
-      captionStyleMode
-    );
+    const generated = coerceGenerated(generatedRaw, type, resolvedTitle, ratio, recipeImageFocus);
 
     return NextResponse.json(
       {
@@ -777,9 +771,7 @@ export async function POST(req: NextRequest) {
           title: resolvedTitle,
           link: link || null,
           aspectRatio: ratio,
-          recipeImageFocus: type === "recipe" ? recipeImageFocus : null,
-          captionTone,
-          captionStyleMode
+          recipeImageFocus: type === "recipe" ? recipeImageFocus : null
         },
         generated
       },
