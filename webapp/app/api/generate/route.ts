@@ -42,7 +42,7 @@ function normalizeType(value?: string): InputType {
 }
 
 function normalizeAspectRatio(value?: string): AspectRatio {
-  return value === "4:5" ? "4:5" : "2:3";
+  return value === "2:3" ? "2:3" : "4:5";
 }
 
 function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {

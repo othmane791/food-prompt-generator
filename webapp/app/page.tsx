@@ -41,7 +41,7 @@ export default function HomePage() {
   ];
 
   const [type, setType] = useState<PostType>("recipe");
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("2:3");
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
@@ -167,7 +167,7 @@ export default function HomePage() {
         <section className="result-grid">
           <article className="panel span-2">
             <h2>
-              Image Prompts ({result.input.aspectRatio || "2:3"}
+              Image Prompts ({result.input.aspectRatio || "4:5"}
               {result.input.recipeImageFocus ? `, ${result.input.recipeImageFocus}` : ""})
             </h2>
             {(result.generated.image_prompts || []).map((p, idx) => (
