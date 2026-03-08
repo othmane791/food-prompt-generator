@@ -12,14 +12,15 @@ Hard rules:
    - "text_overlay_prompt": bold headline overlay image.
 4) The visual style should match this pattern:
    - warm natural light
-   - close or medium-close framing
+   - close or medium-close framing, slightly zoomed-in on the recipe/food
    - cozy home-kitchen realism
    - practical step/ingredient context (not generic stock glamour)
    - stay in food/cooking/kitchen domain
    - casual smartphone-photo feel: slight handheld perspective and mildly imperfect framing
-   - lived-in kitchen details: tiny splashes/crumbs/uneven placement/counter clutter
+   - lived-in kitchen details with casual utensil placement, but still visually clean
    - side window light with soft uneven highlights and shadows (not studio light)
-   - realistic cooking mess/chaos: sauce drips, steam, splatters, irregular browning, bubbling sauces, uneven seasoning
+   - realistic food texture: irregular browning, bubbling sauces, uneven seasoning
+   - avoid visible mess cues like heavy drips/splatters/crumb clutter
    - avoid food-magazine styling, perfect symmetry, and overly clean staged scenes
 5) Captions must sound conversational and curiosity-led.
 6) For recipe posts, CTA line must be exactly: "Full recipe 👇 💬"

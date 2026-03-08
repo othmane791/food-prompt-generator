@@ -587,7 +587,7 @@ function enforceVisualProfile(
     .trim();
   const overlaySentence = recipeOverlaySentence(title);
   const realismStyle =
-    "Shot like a casual smartphone kitchen photo with slight handheld perspective and mildly imperfect framing. Real lived-in home kitchen details: subtle splashes, crumbs, uneven ingredient placement, and natural counter clutter. Side window light with soft shadows and uneven highlights, not studio lighting. Highly realistic food texture with irregular browning, bubbling sauce, tiny oil droplets, uneven seasoning, and light steam/splatters. Casual utensil and ingredient placement as in real home cooking. Avoid food-magazine styling, perfect symmetry, or overly clean staged scenes.";
+    "Shot like a casual smartphone kitchen photo with slight handheld perspective and mildly imperfect framing. Keep the framing slightly zoomed in on the recipe so food remains the clear focus. Real home kitchen environment with natural lived-in details and casually placed utensils/ingredients, without looking messy. Side window light with soft shadows and uneven highlights, not studio lighting. Highly realistic food texture with irregular browning, bubbling sauce, tiny oil droplets, and natural seasoning variation. Avoid food-magazine styling, perfect symmetry, or overly clean staged scenes.";
 
   const parts: string[] = [cleaned];
 
@@ -645,7 +645,7 @@ function buildNanobananaPrompt(
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
   const realismStyle =
-    "Casual smartphone kitchen-photo feel, slight handheld perspective, mildly imperfect framing, lived-in home kitchen imperfections (crumbs, small splashes, uneven placement), side window light with soft uneven highlights, realistic messy cooking texture (irregular browning, bubbling sauce, tiny oil droplets, steam/splatters), avoid polished magazine styling and perfect symmetry.";
+    "Casual smartphone kitchen-photo feel, slight handheld perspective, mildly imperfect framing, and slightly zoomed-in food focus. Real home-kitchen context with natural lived-in details and casual utensil placement (not staged, not messy). Side window light with soft uneven highlights. Realistic texture details like irregular browning, bubbling sauce, and tiny oil droplets. Avoid polished magazine styling and perfect symmetry.";
   const parts: string[] = [scene];
 
   if (type === "recipe") {
