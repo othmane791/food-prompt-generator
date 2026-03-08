@@ -1,7 +1,7 @@
 # Food Prompt Generator (Vercel Ready)
 
 Web app that generates:
-- image prompts (`photo_prompt` + `text_overlay_prompt`)
+- image prompts in two variants per mode (`OpenAI` + `Nanobanana v2`) for `photo_prompt` and `text_overlay_prompt`
 - 3 hook options
 - 3 caption options with recipe/article CTA style
 - selectable aspect ratio per request (`2:3` or `4:5`)

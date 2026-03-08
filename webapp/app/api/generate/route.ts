@@ -23,7 +23,12 @@ type GeneratedShape = {
   resolved_type?: string;
   resolved_title?: string;
   hook_options?: string[];
-  image_prompts?: Array<{ name?: string; prompt?: string }>;
+  image_prompts?: Array<{
+    name?: string;
+    prompt?: string;
+    openai_prompt?: string;
+    nanobanana_v2_prompt?: string;
+  }>;
   caption_options?: string[];
   merged_caption_options?: string[];
   caption_only_options?: string[];
@@ -241,6 +246,16 @@ function normalizePromptText(text: string): string {
   return (text || "").replace(/\s+/g, " ").trim();
 }
 
+function baseSceneFromOpenAIPrompt(prompt: string): string {
+  return normalizePromptText(
+    (prompt || "")
+      .split(/Style profile:/i)[0]
+      .replace(/\bNo logos\.?\s*No watermark\.?/gi, "")
+      .replace(/\bNo text overlay\b\.?/gi, "")
+      .replace(/\s+/g, " ")
+  ).replace(/[;,.]\s*$/, "");
+}
+
 function withAspect(text: string, ratioText: string): string {
   const cleaned = normalizePromptText(text);
   if (/portrait\s*(2:3|4:5)/i.test(cleaned)) return cleaned;
@@ -302,6 +317,51 @@ function enforceVisualProfile(
   return parts.map(normalizePromptText).filter(Boolean).join(" ");
 }
 
+function articleOverlaySentence(title: string): string {
+  const cleaned = normalizeCaptionBody(title).replace(/[!?]+$/g, "");
+  const sentence = clampWords(cleaned, 12);
+  return sentence || "What most people get wrong in the kitchen";
+}
+
+function buildNanobananaPrompt(
+  openAIPrompt: string,
+  promptName: string,
+  type: InputType,
+  recipeImageFocus: RecipeImageFocus,
+  title: string
+): string {
+  const name = (promptName || "").toLowerCase();
+  const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
+  const parts: string[] = [scene];
+
+  if (type === "recipe") {
+    parts.push("Photoreal food photography, warm natural kitchen light, cozy home-cooking mood, detailed textures.");
+    if (recipeImageFocus === "step_or_ingredient") {
+      parts.push("Show in-progress ingredient/assembly step, not final plated dish.");
+    } else {
+      parts.push("Show finished cooked dish ready to serve.");
+    }
+
+    if (name.includes("text_overlay")) {
+      parts.push(
+        `Overlay style: bold black sans-serif text on a white rounded rectangle box at the top/upper-middle.`
+      );
+      parts.push(`Overlay text: "${recipeOverlaySentence(title)}".`);
+    }
+  } else {
+    parts.push("Photoreal practical kitchen context, clean composition, high clarity, realistic color.");
+    if (name.includes("text_overlay")) {
+      parts.push(
+        `Overlay style: bold light sans-serif text on a dark translucent box at upper-middle, 1-2 lines.`
+      );
+      parts.push(`Overlay text: "${articleOverlaySentence(title)}".`);
+    }
+  }
+
+  parts.push("No logos or watermark.");
+  return parts.map(normalizePromptText).filter(Boolean).join(" ");
+}
+
 function coerceGenerated(
   raw: unknown,
   type: InputType,
@@ -334,13 +394,22 @@ function coerceGenerated(
   const namedPrompts = prompts
     .map((p, idx) => ({
       name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
-      prompt: (p.prompt || "").trim()
+      prompt: (p.prompt || p.openai_prompt || "").trim()
     }))
     .filter((p) => p.prompt)
     .map((p) => {
+      const openAIPrompt = enforceVisualProfile(p.prompt, p.name, type, ratioText, recipeImageFocus, title);
       return {
-        ...p,
-        prompt: enforceVisualProfile(p.prompt, p.name, type, ratioText, recipeImageFocus, title)
+        name: p.name,
+        prompt: openAIPrompt,
+        openai_prompt: openAIPrompt,
+        nanobanana_v2_prompt: buildNanobananaPrompt(
+          openAIPrompt,
+          p.name,
+          type,
+          recipeImageFocus,
+          title
+        )
       };
     });
 

@@ -128,6 +128,12 @@ pre {
   margin-top: 0.8rem;
 }
 
+.prompt-columns {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .row-head {
   display: flex;
   align-items: center;
@@ -141,6 +147,10 @@ pre {
   gap: 0.55rem 0.75rem;
   align-items: center;
   margin-top: 0.7rem;
+}
+
+.prompt-columns .copy-item {
+  margin-top: 0;
 }
 
 .copy-label {
@@ -186,5 +196,9 @@ pre {
 
   .span-2 {
     grid-column: auto;
+  }
+
+  .prompt-columns {
+    grid-template-columns: 1fr;
   }
 }

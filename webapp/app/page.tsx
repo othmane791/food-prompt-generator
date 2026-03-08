@@ -18,7 +18,12 @@ type ApiSuccess = {
     resolved_type?: string;
     resolved_title?: string;
     hook_options?: string[];
-    image_prompts?: Array<{ name: string; prompt: string }>;
+    image_prompts?: Array<{
+      name: string;
+      prompt?: string;
+      openai_prompt?: string;
+      nanobanana_v2_prompt?: string;
+    }>;
     caption_options?: string[];
     merged_caption_options?: string[];
     caption_only_options?: string[];
@@ -164,19 +169,42 @@ export default function HomePage() {
             </h2>
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">
-                <div className="row-head">
-                  <h3>{p.name}</h3>
-                  <button
-                    className="copy-btn"
-                    type="button"
-                    onClick={() => copyText(`prompt-${idx}`, p.prompt)}
-                    title="Copy prompt"
-                    aria-label={`Copy ${p.name}`}
-                  >
-                    {copiedKey === `prompt-${idx}` ? "Copied" : "📋 Copy"}
-                  </button>
+                <h3>{p.name}</h3>
+                <div className="prompt-columns">
+                  <div className="copy-item">
+                    <div className="copy-label">OpenAI Prompt</div>
+                    <button
+                      className="copy-btn"
+                      type="button"
+                      onClick={() => copyText(`prompt-openai-${idx}`, p.openai_prompt || p.prompt || "")}
+                      title="Copy OpenAI prompt"
+                      aria-label={`Copy OpenAI prompt for ${p.name}`}
+                    >
+                      {copiedKey === `prompt-openai-${idx}` ? "Copied" : "📋 Copy"}
+                    </button>
+                    <pre className="copy-text">{p.openai_prompt || p.prompt || ""}</pre>
+                  </div>
+                  <div className="copy-item">
+                    <div className="copy-label">Nanobanana v2 Prompt</div>
+                    <button
+                      className="copy-btn"
+                      type="button"
+                      onClick={() =>
+                        copyText(
+                          `prompt-nanobanana-${idx}`,
+                          p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""
+                        )
+                      }
+                      title="Copy Nanobanana v2 prompt"
+                      aria-label={`Copy Nanobanana v2 prompt for ${p.name}`}
+                    >
+                      {copiedKey === `prompt-nanobanana-${idx}` ? "Copied" : "📋 Copy"}
+                    </button>
+                    <pre className="copy-text">
+                      {p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""}
+                    </pre>
+                  </div>
                 </div>
-                <pre className="copy-text">{p.prompt}</pre>
               </div>
             ))}
           </article>
