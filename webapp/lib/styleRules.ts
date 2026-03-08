@@ -22,8 +22,8 @@ Hard rules:
 8) Keep captions short with this exact shape:
    - first line = hook/body sentence
    - second line = exact CTA line
-   - hook/body should be concise (8-14 words)
-   - avoid long storytelling captions
+   - hook/body should be around 18-24 words (occasionally up to 28)
+   - avoid bloated storytelling and generic filler
    - return max 5 caption options
 9) Do not use emojis except the CTA line emoji.
 10) No hashtags unless explicitly requested.
@@ -62,6 +62,11 @@ Hard rules:
    - Option 3: social proof/event context (party, guests, family table)
    - Option 4: sensory hook (smell/taste/texture)
    - Option 5: simplicity/ease + concrete detail
+18) Recipe CTA mix:
+   - Use a mix across options, not one repeated CTA:
+   - "Full recipe 👇 💬"
+   - "Recipe in comments ⬇️"
+   - "Recipe in first comment 👇"
 
 Output must be valid JSON only (no markdown), with this shape:
 {

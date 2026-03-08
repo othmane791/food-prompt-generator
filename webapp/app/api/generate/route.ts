@@ -110,6 +110,12 @@ function buildUserPrompt(input: {
       recipe_image_focus: input.recipeImageFocus,
       caption_strategy: {
         source: "top-engagement analysis",
+        first_line_target_words: "18-24 (occasionally up to 28)",
+        recipe_cta_mix: [
+          "Full recipe 👇 💬",
+          "Recipe in comments ⬇️",
+          "Recipe in first comment 👇"
+        ],
         target_patterns: [
           "first-person testimonial voice",
           "family/social proof mention",
@@ -130,14 +136,74 @@ function buildUserPrompt(input: {
   );
 }
 
-function normalizeCaption(caption: string, type: InputType): string {
-  const cta = type === "recipe" ? "Full recipe 👇 💬" : "Full article 👇 💬";
-  const cleaned = (caption || "")
-    .replace(/\s*Full\s+(recipe|article)\s*👇\s*💬\s*/gi, " ")
+function titleSeed(title: string): number {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function clampWordRange(text: string, minWords: number, maxWords: number, fillers: string[]): string {
+  let words = text.split(/\s+/).filter(Boolean);
+  if (words.length > maxWords) words = words.slice(0, maxWords);
+  let i = 0;
+  while (words.length < minWords && i < fillers.length) {
+    words.push(...fillers[i].split(/\s+/).filter(Boolean));
+    if (words.length > maxWords) words = words.slice(0, maxWords);
+    i += 1;
+  }
+  return words.join(" ");
+}
+
+function canonicalRecipeCta(input: string | null, index: number, title: string): string {
+  if (input) {
+    const low = input.toLowerCase();
+    if (/recipe in first comment|recipe in first co/.test(low)) return "Recipe in first comment 👇";
+    if (/recipe in comments|recipe will be in comments|recipe in comment|recipe in \(c\.o\.m\.m\.e\.n\.t\)/.test(low)) return "Recipe in comments ⬇️";
+    if (/full recipe/.test(low)) return "Full recipe 👇 💬";
+  }
+  const seeded = (titleSeed(title) + index) % 5;
+  if (seeded === 1 || seeded === 4) return "Recipe in comments ⬇️";
+  if (seeded === 3) return "Recipe in first comment 👇";
+  return "Full recipe 👇 💬";
+}
+
+function canonicalArticleCta(input: string | null): string {
+  if (input && /full article/i.test(input)) return "Full article 👇 💬";
+  return "Full article 👇 💬";
+}
+
+function normalizeCaption(caption: string, type: InputType, index = 0, title = ""): string {
+  const text = (caption || "").trim();
+  const lines = text
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  let firstLine = normalizeCaptionBody(lines[0] || text);
+  firstLine = firstLine
+    .replace(/\bfull\s+recipe\b.*$/i, "")
+    .replace(/\brecipe\s+in\s+comments?\b.*$/i, "")
+    .replace(/\brecipe\s+in\s+first\s+comment\b.*$/i, "")
     .replace(/\s+/g, " ")
     .trim();
-  const body = cleaned.replace(/[.。]\s*$/, "");
-  return `${body}.\n${cta}`;
+  const secondLineRaw = lines.length > 1 ? lines[1] : null;
+
+  const cta =
+    type === "recipe"
+      ? canonicalRecipeCta(secondLineRaw, index, title)
+      : canonicalArticleCta(secondLineRaw);
+
+  firstLine = clampWordRange(
+    firstLine,
+    18,
+    28,
+    ["for dinner", "this week", "at my house"]
+  );
+  firstLine = firstLine.replace(/[.。]\s*$/, "");
+
+  return `${firstLine}.\n${cta}`;
 }
 
 function normalizeCaptionBody(text: string): string {
@@ -199,12 +265,20 @@ function inferRecipeAction(title: string): string {
 
 function houseStyleBodies(type: InputType): string[] {
   if (type === "recipe") {
-    return [];
+    return [
+      "I made this once and everyone asked for seconds before dinner was even over",
+      "My family thought this took all day, but the prep was surprisingly simple tonight",
+      "The smell alone brought everyone into the kitchen before it was even done",
+      "I brought this to a get-together and people immediately asked for the recipe",
+      "This easy method turned basic ingredients into the most requested dinner this week"
+    ];
   }
   return [
-    "I had no idea this until now",
-    "Most people still get this wrong",
-    "I thought this was normal, but I was wrong"
+    "I had no idea this until now, and it instantly changed how I do this",
+    "Most people still get this wrong, and I was shocked by the real answer",
+    "I thought this was normal for years, but I learned something important today",
+    "This tip looked random at first, but the result made complete sense to me",
+    "I tried this once out of curiosity, and now I do it every single time"
   ];
 }
 
@@ -373,7 +447,7 @@ function coerceGenerated(
   const hooks = Array.isArray(src.hook_options) ? src.hook_options.filter(Boolean).slice(0, 3) : [];
   const fallbackHook = `Want a smarter way to handle "${title}"?`;
   while (hooks.length < 3) hooks.push(fallbackHook);
-  const shortHooks = hooks.map((h) => clampWords(normalizeCaptionBody(h), 14));
+  const shortHooks = hooks.map((h) => clampWords(normalizeCaptionBody(h), 24));
 
   const prompts =
     Array.isArray(src.image_prompts) && src.image_prompts.length > 0
@@ -414,21 +488,21 @@ function coerceGenerated(
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 5) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
   while (captions.length < 5) captions.push(fallbackCaption);
-  const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 14));
-  const houseBodies = houseStyleBodies(type).map((c) => clampWords(normalizeCaptionBody(c), 14));
+  const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 28));
+  const houseBodies = houseStyleBodies(type).map((c) => clampWords(normalizeCaptionBody(c), 28));
 
   const defaultMergedOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => buildMergedCaption(body, type))).slice(0, 5);
   while (defaultMergedOptions.length < 5) {
-    defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 14), type));
+    defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 28), type));
   }
 
   const rawCaptionOptions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean) : [];
   const normalizedFromModel = uniqueNonEmpty(
     rawCaptionOptions
       .map((c) => normalizeCaptionBody(c))
-      .map((c) => clampWords(c, 14))
+      .map((c) => clampWords(c, 28))
       .filter(Boolean)
-  ).map((body) => normalizeCaption(body, type));
+  ).map((body, idx) => normalizeCaption(body, type, idx, title));
 
   const mergedCaptionOptions =
     normalizedFromModel.length > 0
