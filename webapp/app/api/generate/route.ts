@@ -733,11 +733,16 @@ function buildNanobananaPrompt(
   const handInteraction = recipeHandInteraction(title, name);
   const cameraAngleSentence =
     cameraAngleMode === "above"
-      ? "Camera angle: above shot (top-down smartphone view from above), tight close framing."
-      : "Camera angle: casual smartphone view around 40-55 degrees above the food.";
+      ? "STRICT CAMERA ANGLE: true overhead top-down view (90 degrees directly above the food)."
+      : "STRICT CAMERA ANGLE: oblique smartphone view around 40-55 degrees above the food.";
+  const cameraAngleNegative =
+    cameraAngleMode === "above"
+      ? "Hard constraint: no oblique angle, no 3/4 angle, no side angle, no eye-level angle."
+      : "Hard constraint: no top-down 90-degree angle, no side angle, no eye-level angle.";
   const recipeRealismStyle = [
-    "Casual smartphone kitchen photo with slight handheld perspective.",
     cameraAngleSentence,
+    cameraAngleNegative,
+    "Casual smartphone kitchen photo with slight handheld perspective.",
     "Close or medium-close composition with tight crop so the food fills most of the frame.",
     `In-progress cooking action: ${actionMoment}; never a finished plated dish.`,
     "Food realism: irregular browning, bubbling sauce or oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, and natural cooking imperfections.",
@@ -749,9 +754,12 @@ function buildNanobananaPrompt(
   ].join(" ");
   const articleRealismStyle =
     "Casual smartphone kitchen-photo feel with slight handheld perspective, practical framing, natural side window light, and realistic texture detail. Avoid polished magazine styling and perfect symmetry.";
-  const parts: string[] = [scene];
+  const parts: string[] = [];
 
   if (type === "recipe") {
+    parts.push(cameraAngleSentence);
+    parts.push(cameraAngleNegative);
+    parts.push(scene);
     parts.push("Photorealistic viral home-cooking smartphone image style.");
     parts.push(recipeRealismStyle);
     parts.push("Keep focus on active cooking process and textures.");
@@ -763,6 +771,7 @@ function buildNanobananaPrompt(
       parts.push(`Curiosity-driven overlay hook (10-18 words): "${recipeOverlaySentence(title)}".`);
     }
   } else {
+    parts.push(scene);
     parts.push("Photoreal practical kitchen context, clean composition, high clarity, realistic color.");
     parts.push(articleRealismStyle);
     if (name.includes("text_overlay")) {
