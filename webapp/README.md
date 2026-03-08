@@ -20,7 +20,8 @@ Set your `.env.local`:
 ```bash
 OPENAI_API_KEY=YOUR_KEY
 OPENAI_MODEL=gpt-5.4-2026-03-05
-OPENAI_FALLBACK_MODELS=gpt-5.4,gpt-5-mini
+# Optional fallback list (comma-separated); leave empty if unsure about access
+OPENAI_FALLBACK_MODELS=
 ```
 
 Then run:
@@ -48,7 +49,7 @@ git push -u origin main
 4. Add env vars in Vercel Project Settings:
    - `OPENAI_API_KEY`
    - `OPENAI_MODEL` (optional, default: `gpt-5.4-2026-03-05`)
-   - `OPENAI_FALLBACK_MODELS` (optional, comma-separated fallback list)
+   - `OPENAI_FALLBACK_MODELS` (optional, comma-separated fallback list; only models your project can access)
 5. Deploy.
 
 ## API Endpoint

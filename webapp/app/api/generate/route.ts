@@ -377,7 +377,7 @@ function coerceGenerated(
 async function callOpenAI(system: string, user: string): Promise<unknown> {
   const apiKey = process.env.OPENAI_API_KEY;
   const primaryModel = process.env.OPENAI_MODEL || "gpt-5.4-2026-03-05";
-  const fallbackModels = (process.env.OPENAI_FALLBACK_MODELS || "gpt-5.4,gpt-5-mini")
+  const fallbackModels = (process.env.OPENAI_FALLBACK_MODELS || "")
     .split(",")
     .map((m) => m.trim())
     .filter(Boolean);
@@ -388,6 +388,7 @@ async function callOpenAI(system: string, user: string): Promise<unknown> {
   }
 
   let lastError = "Unknown model error";
+  const attemptErrors: string[] = [];
 
   for (let i = 0; i < models.length; i++) {
     const model = models[i];
@@ -411,6 +412,7 @@ async function callOpenAI(system: string, user: string): Promise<unknown> {
     if (!res.ok) {
       const text = await res.text();
       lastError = `OpenAI error for model "${model}" (${res.status}): ${text}`;
+      attemptErrors.push(lastError);
       const lower = text.toLowerCase();
       const shouldFallback =
         i < models.length - 1 &&
@@ -432,6 +434,7 @@ async function callOpenAI(system: string, user: string): Promise<unknown> {
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
       lastError = `Model "${model}" returned empty response`;
+      attemptErrors.push(lastError);
       if (i < models.length - 1) continue;
       throw new Error(lastError);
     }
@@ -440,11 +443,15 @@ async function callOpenAI(system: string, user: string): Promise<unknown> {
       return JSON.parse(content);
     } catch {
       lastError = `Model "${model}" response was not valid JSON`;
+      attemptErrors.push(lastError);
       if (i < models.length - 1) continue;
       throw new Error(lastError);
     }
   }
 
+  if (attemptErrors.length > 0) {
+    throw new Error(`All model attempts failed. ${attemptErrors.join(" | ")}`);
+  }
   throw new Error(lastError);
 }
 
