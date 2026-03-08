@@ -5,8 +5,6 @@ import { FormEvent, useMemo, useState } from "react";
 type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
-type CaptionTone = "curiosity" | "comfort" | "bold" | "question";
-type CaptionStyleMode = "standard" | "top_performer";
 
 type ApiSuccess = {
   input: {
@@ -29,17 +27,12 @@ type ApiSuccess = {
     caption_options?: string[];
     merged_caption_options?: string[];
     caption_only_options?: string[];
-    recipe_caption_variants?: Array<{
-      tone: CaptionTone;
-      style_mode: CaptionStyleMode;
-      captions: string[];
-    }>;
     notes?: string;
   };
 };
 
 export default function HomePage() {
-  const MAX_MERGED_OPTIONS = 3;
+  const MAX_MERGED_OPTIONS = 5;
   const MAX_CAPTION_ONLY_OPTIONS = 0;
   const RECIPE_FAMILY_LABELS = [
     "Action + Ingredient Count + Payoff",
@@ -221,47 +214,28 @@ export default function HomePage() {
 
           <article className="panel span-2">
             <h2>Caption Options</h2>
-            {result.input.type === "recipe" && (result.generated.recipe_caption_variants || []).length > 0 ? (
-              <p className="subhead">All Tone + Style Variants</p>
+            {mergedCaptionOptions.length > 0 ? (
+              <p className="subhead">Top Caption Results (Max 5)</p>
             ) : null}
-            {result.input.type === "recipe" && (result.generated.recipe_caption_variants || []).length > 0
-              ? (result.generated.recipe_caption_variants || []).map((variant, vIdx) => (
-                  <div key={`variant-${variant.tone}-${variant.style_mode}`} className="block">
-                    <h3>
-                      {variant.tone} · {variant.style_mode === "top_performer" ? "top-performer" : "standard"}
-                    </h3>
-                    {variant.captions.map((m, idx) => (
-                      <div key={`merged-${vIdx}-${idx}`} className="copy-item">
-                        <div className="copy-label">{RECIPE_FAMILY_LABELS[idx] || `Recipe Caption ${idx + 1}`}</div>
-                        <button
-                          className="copy-btn"
-                          type="button"
-                          onClick={() => copyText(`merged-${vIdx}-${idx}`, m)}
-                          title="Copy merged caption"
-                          aria-label={`Copy merged caption ${idx + 1}`}
-                        >
-                          {copiedKey === `merged-${vIdx}-${idx}` ? "Copied" : "📋 Copy"}
-                        </button>
-                        <pre className="copy-text">{m}</pre>
-                      </div>
-                    ))}
-                  </div>
-                ))
-              : mergedCaptionOptions.map((m, idx) => (
-                  <div key={`merged-${idx}`} className="copy-item">
-                    <div className="copy-label">{`Merged ${idx + 1}`}</div>
-                    <button
-                      className="copy-btn"
-                      type="button"
-                      onClick={() => copyText(`merged-${idx}`, m)}
-                      title="Copy merged caption"
-                      aria-label={`Copy merged caption ${idx + 1}`}
-                    >
-                      {copiedKey === `merged-${idx}` ? "Copied" : "📋 Copy"}
-                    </button>
-                    <pre className="copy-text">{m}</pre>
-                  </div>
-                ))}
+            {mergedCaptionOptions.map((m, idx) => (
+              <div key={`merged-${idx}`} className="copy-item">
+                <div className="copy-label">
+                  {result.input.type === "recipe"
+                    ? RECIPE_FAMILY_LABELS[idx] || `Caption ${idx + 1}`
+                    : `Caption ${idx + 1}`}
+                </div>
+                <button
+                  className="copy-btn"
+                  type="button"
+                  onClick={() => copyText(`merged-${idx}`, m)}
+                  title="Copy caption"
+                  aria-label={`Copy caption ${idx + 1}`}
+                >
+                  {copiedKey === `merged-${idx}` ? "Copied" : "📋 Copy"}
+                </button>
+                <pre className="copy-text">{m}</pre>
+              </div>
+            ))}
 
             {captionOnlyOptions.map((c, idx) => (
               <div key={`caption-only-${idx}`} className="copy-item">

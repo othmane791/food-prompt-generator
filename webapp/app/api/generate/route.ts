@@ -34,11 +34,6 @@ type GeneratedShape = {
   caption_options?: string[];
   merged_caption_options?: string[];
   caption_only_options?: string[];
-  recipe_caption_variants?: Array<{
-    tone: CaptionTone;
-    style_mode: CaptionStyleMode;
-    captions: string[];
-  }>;
   notes?: string;
 };
 
@@ -189,96 +184,6 @@ function ingredientCountPhrase(title: string): string {
   return "a few pantry ingredients";
 }
 
-function titleSeed(title: string): number {
-  let hash = 0;
-  for (let i = 0; i < title.length; i++) {
-    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
-
-function pickBySeed(values: string[], seed: number, salt: number): string {
-  if (values.length === 0) return "";
-  return values[(seed + salt) % values.length];
-}
-
-const RECIPE_CAPTION_HISTORY_LIMIT = 20;
-const recipeCaptionHistory: string[] = [];
-
-function historyKey(text: string): string {
-  return normalizeCaptionBody(text).toLowerCase();
-}
-
-function isRecentlyUsed(text: string): boolean {
-  const key = historyKey(text);
-  return recipeCaptionHistory.includes(key);
-}
-
-function rememberRecipeCaptions(lines: string[]): void {
-  for (const line of lines) {
-    const key = historyKey(line);
-    if (!key) continue;
-    recipeCaptionHistory.push(key);
-  }
-  while (recipeCaptionHistory.length > RECIPE_CAPTION_HISTORY_LIMIT) {
-    recipeCaptionHistory.shift();
-  }
-}
-
-function recipeConcreteDetail(title: string): string {
-  const t = title.toLowerCase();
-  if (/\bslow cooker|crock pot|crockpot\b/.test(t)) return "slow cooker";
-  if (/\bcasserole|bake|lasagna|pie\b/.test(t)) return "casserole dish";
-  if (/\bsoup|stew|chili\b/.test(t)) return "simmering pot";
-  if (/\bone pan|one-pot|one pot|skillet\b/.test(t)) return "one pan";
-  if (/\bchicken\b/.test(t)) return "chicken";
-  if (/\bbeef\b/.test(t)) return "beef";
-  if (/\bpork\b/.test(t)) return "pork";
-  if (/\bturkey\b/.test(t)) return "turkey";
-  if (/\brice\b/.test(t)) return "rice";
-  if (/\bpotato(?:es)?\b/.test(t)) return "potatoes";
-  return "this dish";
-}
-
-function enforceWordRange(text: string, minWords: number, maxWords: number, fillers: string[]): string {
-  const normalized = normalizeCaptionBody(text);
-  let words = normalized.split(/\s+/).filter(Boolean);
-  if (words.length > maxWords) words = words.slice(0, maxWords);
-  let idx = 0;
-  while (words.length < minWords && idx < fillers.length) {
-    words.push(...fillers[idx].split(/\s+/).filter(Boolean));
-    idx += 1;
-    if (words.length > maxWords) words = words.slice(0, maxWords);
-  }
-  return words.join(" ");
-}
-
-function avoidWeakFiller(text: string): string {
-  const lower = text.toLowerCase();
-  const weak = [" cozy ", " easy ", " homemade ", " comfort "];
-  let out = ` ${normalizeCaptionBody(text)} `;
-  let used = 0;
-  for (const w of weak) {
-    if (lower.includes(w.trim())) {
-      used += 1;
-      if (used > 1) {
-        const re = new RegExp(`\\b${w.trim()}\\b`, "i");
-        out = out.replace(re, "").replace(/\s+/g, " ");
-      }
-    }
-  }
-  return out.trim();
-}
-
-function recipeDishPhrase(title: string): string {
-  const t = title.toLowerCase();
-  if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "slow-cooker dinner";
-  if (/\b(casserole|bake|lasagna|pie)\b/.test(t)) return "baked comfort meal";
-  if (/\b(soup|stew|chili|broth)\b/.test(t)) return "cozy bowl";
-  if (/\b(skillet|one pan|one-pot|one pot)\b/.test(t)) return "one-pan dinner";
-  return "easy dinner";
-}
-
 function inferRecipeAction(title: string): string {
   const t = title.toLowerCase();
   if (/\b(soup|stew|chili|broth)\b/.test(t)) return "Dump";
@@ -286,99 +191,6 @@ function inferRecipeAction(title: string): string {
   if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "Add";
   if (/\b(chicken|beef|pork|turkey|meat)\b/.test(t)) return "Pour";
   return "Mix";
-}
-
-function buildRecipePatternCaptionBodies(
-  title: string,
-  tone: CaptionTone,
-  styleMode: CaptionStyleMode
-): string[] {
-  const seed = titleSeed(title);
-  const action = inferRecipeAction(title);
-  const count = ingredientCountPhrase(title);
-  const ingredient = recipeMainIngredient(title);
-  const overTarget = ingredient === "dinner" ? "everything" : ingredient;
-  const dish = recipeDishPhrase(title);
-  const detail = recipeConcreteDetail(title);
-
-  const toneOpeners: Record<CaptionTone, string[]> = {
-    curiosity: ["Most people miss this step", "This trick changes everything", "Try this once and see"],
-    comfort: ["Old-school flavor done right", "Sunday-dinner energy", "Classic taste, simple method"],
-    bold: ["Stop overcomplicating dinner", "This one wins every time", "No-fail dinner move"],
-    question: ["Ever tried this dinner shortcut", "Why does this method work so well", "Can dinner really be this simple"]
-  };
-
-  const actionPayoffs = [
-    "for a weeknight win",
-    "for big flavor without extra work",
-    "for the dinner everyone asks for again",
-    "for a plate that disappears fast"
-  ];
-  const comfortOpeners = [
-    "Old-school flavor",
-    "Grandma-style taste",
-    "Sunday-supper vibes",
-    "Homestyle dinner in every bite"
-  ];
-  const comfortSimple = [
-    "with simple steps and barely any prep",
-    "using easy pantry staples and one easy method",
-    "with a no-fuss method anyone can pull off",
-    "without a long ingredient list or extra work"
-  ];
-  const comfortPayoffs = [
-    "that tastes like a classic family favorite",
-    "that turns into a craveable dinner fast",
-    "that feels homemade on a busy night",
-    "that keeps everyone coming back"
-  ];
-  const socialProof = [
-    "My family asked for seconds before I sat down",
-    "I made this once and now they request it weekly",
-    "This vanished first at dinner and everyone wanted the method",
-    "Everyone asked how I made this and prep stayed simple"
-  ];
-
-  const topPerformerAction = [
-    `${action} ${count} over ${overTarget} for a dinner that disappears fast`,
-    `${action} ${count} into ${detail} for the weeknight win`,
-    `${action} ${count} and let this ${dish} handle dinner`
-  ];
-  const standardAction = [
-    `${pickBySeed(toneOpeners[tone], seed, 1)} ${action.toLowerCase()} ${count} over ${overTarget}`,
-    `${action} ${count} together ${pickBySeed(actionPayoffs, seed, 7)}`,
-    `${action} ${count} for this ${dish} ${pickBySeed(actionPayoffs, seed, 11)}`
-  ];
-  const family1 = styleMode === "top_performer" ? topPerformerAction : standardAction;
-
-  const family2 = [
-    `${pickBySeed(comfortOpeners, seed, 5)} ${pickBySeed(comfortSimple, seed, 9)} with ${detail}`,
-    `${pickBySeed(comfortOpeners, seed, 17)} ${pickBySeed(comfortSimple, seed, 19)} ${pickBySeed(comfortPayoffs, seed, 23)}`
-  ];
-  const family3 = [
-    pickBySeed(socialProof, seed, 29),
-    `${pickBySeed(socialProof, seed, 31)} and cleanup stayed easy`,
-    `They kept asking who made this ${dish} after the first bite`
-  ];
-
-  const candidates = [
-    pickBySeed(family1, seed, 2),
-    pickBySeed(family2, seed, 4),
-    pickBySeed(family3, seed, 6).replace(/\s+/g, " ").trim().replace(/\.$/, "")
-  ];
-  const usedNow = new Set<string>();
-  const selected = candidates.map((line, idx) => {
-    const fallbackPool = ["for dinner", "tonight", "with no extra stress"];
-    let candidate = avoidWeakFiller(enforceWordRange(line, 8, 14, fallbackPool));
-    if (isRecentlyUsed(candidate) || usedNow.has(historyKey(candidate))) {
-      const rotationPools = [family1, family2, family3];
-      candidate = pickBySeed(rotationPools[idx], seed + 11, idx + 17);
-      candidate = avoidWeakFiller(enforceWordRange(candidate, 8, 14, fallbackPool));
-    }
-    usedNow.add(historyKey(candidate));
-    return candidate;
-  });
-  return selected;
 }
 
 function houseStyleBodies(type: InputType): string[] {
@@ -392,17 +204,6 @@ function houseStyleBodies(type: InputType): string[] {
   ];
 }
 
-function buildRecipePatternCaptions(
-  title: string,
-  tone: CaptionTone,
-  styleMode: CaptionStyleMode
-): string[] {
-  const bodies = buildRecipePatternCaptionBodies(title, tone, styleMode);
-  rememberRecipeCaptions(bodies);
-  return bodies.map((body) =>
-    normalizeCaption(clampWords(normalizeCaptionBody(body), 18), "recipe")
-  );
-}
 
 function recipeFocusSentence(focus: RecipeImageFocus): string {
   if (focus === "final_dish") {
@@ -606,33 +407,29 @@ function coerceGenerated(
       };
     });
 
-  const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 3) : [];
+  const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 5) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
-  while (captions.length < 3) captions.push(fallbackCaption);
+  while (captions.length < 5) captions.push(fallbackCaption);
   const shortCaptionBodies = captions.map((c) => clampWords(normalizeCaptionBody(c), 14));
   const houseBodies = houseStyleBodies(type).map((c) => clampWords(normalizeCaptionBody(c), 14));
 
-  const defaultMergedOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => buildMergedCaption(body, type))).slice(0, 3);
-  while (defaultMergedOptions.length < 3) {
+  const defaultMergedOptions = uniqueNonEmpty([...houseBodies, ...shortCaptionBodies, ...shortHooks].map((body) => buildMergedCaption(body, type))).slice(0, 5);
+  while (defaultMergedOptions.length < 5) {
     defaultMergedOptions.push(buildMergedCaption(clampWords(normalizeCaptionBody(fallbackCaption), 14), type));
   }
 
-  const recipeCaptionVariants =
-    type === "recipe"
-      ? CAPTION_TONES.flatMap((tone) =>
-          CAPTION_STYLE_MODES.map((styleMode) => ({
-            tone,
-            style_mode: styleMode,
-            captions: buildRecipePatternCaptions(title, tone, styleMode)
-          }))
-        )
-      : [];
+  const rawCaptionOptions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean) : [];
+  const normalizedFromModel = uniqueNonEmpty(
+    rawCaptionOptions
+      .map((c) => normalizeCaptionBody(c))
+      .map((c) => clampWords(c, 14))
+      .filter(Boolean)
+  ).map((body) => normalizeCaption(body, type));
 
   const mergedCaptionOptions =
-    type === "recipe"
-      ? recipeCaptionVariants.find((v) => v.tone === "curiosity" && v.style_mode === "top_performer")?.captions ||
-        buildRecipePatternCaptions(title, "curiosity", "top_performer")
-      : defaultMergedOptions;
+    normalizedFromModel.length > 0
+      ? normalizedFromModel.slice(0, 5)
+      : defaultMergedOptions.slice(0, 5);
   const captionOnlyOptions: string[] = [];
 
   return {
@@ -643,7 +440,6 @@ function coerceGenerated(
     caption_options: mergedCaptionOptions,
     merged_caption_options: mergedCaptionOptions,
     caption_only_options: captionOnlyOptions,
-    recipe_caption_variants: recipeCaptionVariants,
     notes:
       src.notes?.trim() ||
       (type === "recipe"

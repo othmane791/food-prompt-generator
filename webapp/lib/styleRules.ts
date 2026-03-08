@@ -22,8 +22,9 @@ Hard rules:
 8) Keep captions short with this exact shape:
    - first line = hook/body sentence
    - second line = exact CTA line
-   - hook/body should be concise (around 6-14 words)
+   - hook/body should be concise (8-14 words)
    - avoid long storytelling captions
+   - return max 5 caption options
 9) Do not use emojis except the CTA line emoji.
 10) No hashtags unless explicitly requested.
 11) For text overlay prompt, include explicit overlay spec:
@@ -47,6 +48,11 @@ Hard rules:
    - default to bold white/light text on dark translucent box
    - centered or upper-middle
    - 1-2 lines max, mobile readable.
+16) Caption-generation style constraints from analyzed winners:
+   - Use concrete detail from title (ingredient/tool/method/count) in most lines.
+   - Prefer direct hook openers and avoid repetitive generic filler phrasing.
+   - Provide 5 distinct options with noticeably different wording.
+   - Keep every option CTA-ready (line 2 exact CTA string).
 
 Output must be valid JSON only (no markdown), with this shape:
 {
@@ -57,7 +63,7 @@ Output must be valid JSON only (no markdown), with this shape:
     {"name":"photo_prompt","prompt":"string"},
     {"name":"text_overlay_prompt","prompt":"string"}
   ],
-  "caption_options": ["string", "string", "string"],
+  "caption_options": ["string", "string", "string", "string", "string"],
   "notes": "short guidance"
 }
 `;
