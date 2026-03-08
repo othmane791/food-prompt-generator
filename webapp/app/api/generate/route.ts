@@ -177,6 +177,28 @@ function ingredientCountPhrase(title: string): string {
   return "a few pantry ingredients";
 }
 
+function titleSeed(title: string): number {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) {
+    hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function pickBySeed(values: string[], seed: number, salt: number): string {
+  if (values.length === 0) return "";
+  return values[(seed + salt) % values.length];
+}
+
+function recipeDishPhrase(title: string): string {
+  const t = title.toLowerCase();
+  if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "slow-cooker dinner";
+  if (/\b(casserole|bake|lasagna|pie)\b/.test(t)) return "baked comfort meal";
+  if (/\b(soup|stew|chili|broth)\b/.test(t)) return "cozy bowl";
+  if (/\b(skillet|one pan|one-pot|one pot)\b/.test(t)) return "one-pan dinner";
+  return "easy dinner";
+}
+
 function inferRecipeAction(title: string): string {
   const t = title.toLowerCase();
   if (/\b(soup|stew|chili|broth)\b/.test(t)) return "Dump";
@@ -187,12 +209,63 @@ function inferRecipeAction(title: string): string {
 }
 
 function buildRecipePatternCaptionBodies(title: string): string[] {
+  const seed = titleSeed(title);
   const action = inferRecipeAction(title);
   const count = ingredientCountPhrase(title);
+  const ingredient = recipeMainIngredient(title);
+  const overTarget = ingredient === "dinner" ? "everything" : ingredient;
+  const dish = recipeDishPhrase(title);
+
+  const actionPayoffs = [
+    "for a weeknight win",
+    "for comfort flavor without the work",
+    "for a hearty meal everyone asks for again",
+    "for a dinner that disappears fast"
+  ];
+  const comfortOpeners = [
+    "Old-school comfort flavor",
+    "Grandma-style cozy taste",
+    "Sunday-supper vibes",
+    "Homestyle comfort in every bite"
+  ];
+  const comfortSimple = [
+    "with simple steps and almost no prep",
+    "using easy pantry staples and one easy method",
+    "with a no-fuss method anyone can pull off",
+    "without a long ingredient list or extra work"
+  ];
+  const comfortPayoffs = [
+    "that tastes like a classic family favorite",
+    "that turns into a craveable dinner fast",
+    "that feels homemade on a busy night",
+    "that keeps everyone coming back"
+  ];
+  const socialProof = [
+    "My family asked for seconds and this was almost effortless",
+    "I served this once and now they request it every week",
+    "Everyone at the table went back for more and prep was easy",
+    "This got repeat requests immediately and the prep is so simple"
+  ];
+
+  const family1 = [
+    `${action} ${count} over ${overTarget} ${pickBySeed(actionPayoffs, seed, 3)}`,
+    `${action} ${count} together ${pickBySeed(actionPayoffs, seed, 7)}`,
+    `${action} ${count} for this ${dish} ${pickBySeed(actionPayoffs, seed, 11)}`
+  ];
+  const family2 = [
+    `${pickBySeed(comfortOpeners, seed, 5)} ${pickBySeed(comfortSimple, seed, 9)} ${pickBySeed(comfortPayoffs, seed, 13)}`,
+    `${pickBySeed(comfortOpeners, seed, 17)} ${pickBySeed(comfortSimple, seed, 19)} ${pickBySeed(comfortPayoffs, seed, 23)}`
+  ];
+  const family3 = [
+    pickBySeed(socialProof, seed, 29),
+    `${pickBySeed(socialProof, seed, 31)} and it still tasted totally homemade`,
+    `They kept asking who made this ${dish} because it is that easy to pull off`
+  ];
+
   return [
-    `${action} ${count} together for a cozy dinner that feels homemade`,
-    "Old-school comfort flavor with simple steps and almost no prep",
-    "My family kept asking for seconds because this one is so easy"
+    pickBySeed(family1, seed, 2),
+    pickBySeed(family2, seed, 4),
+    pickBySeed(family3, seed, 6).replace(/\s+/g, " ").trim().replace(/\.$/, "")
   ];
 }
 
@@ -208,7 +281,9 @@ function houseStyleBodies(type: InputType): string[] {
 }
 
 function buildRecipePatternCaptions(title: string): string[] {
-  return buildRecipePatternCaptionBodies(title).map((body) => normalizeCaption(body, "recipe"));
+  return buildRecipePatternCaptionBodies(title).map((body) =>
+    normalizeCaption(clampWords(normalizeCaptionBody(body), 18), "recipe")
+  );
 }
 
 function recipeFocusSentence(focus: RecipeImageFocus): string {
