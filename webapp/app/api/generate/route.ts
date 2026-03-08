@@ -381,22 +381,14 @@ function postProcessCaptionBodies(bodies: string[], type: InputType, title: stri
     const source = normalizeCaptionBody(bodies[i] || "");
     let line = source;
 
-    if (type === "recipe" && !lineMatchesAngle(line, i)) {
-      line = buildRecipeViralAngle(i, title, 0);
-    }
-
     line = enrichCaptionBody(line, type, i, title);
     if (!line) continue;
 
     const key = normalizeCaptionBody(line).toLowerCase();
     const sKey = stemKey(line);
     if (seenExact.has(key) || seenStem.has(sKey)) {
-      if (type === "recipe") {
-        line = enrichCaptionBody(buildRecipeViralAngle(i, title, 17), type, i + 31, title);
-      } else {
-        const opener = pickSeeded(DIVERSE_OPENER_POOL, titleSeed(title) + i * 13);
-        line = enrichCaptionBody(`${opener}: ${line}`.replace(/\s+/g, " "), type, i + 31, title);
-      }
+      const opener = pickSeeded(DIVERSE_OPENER_POOL, titleSeed(title) + i * 13);
+      line = enrichCaptionBody(`${opener}: ${line}`.replace(/\s+/g, " "), type, i + 31, title);
     }
 
     const finalKey = normalizeCaptionBody(line).toLowerCase();
