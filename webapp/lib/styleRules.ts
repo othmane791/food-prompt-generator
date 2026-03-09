@@ -91,11 +91,13 @@ Hard rules:
    - realism/staging constraints
 21) For "ingredient_strip_recipe" mode, generate one clean prompt that includes:
    - portrait 4:5, medium-close, slightly top-down ~30-45-degree view (not overhead)
+   - top area (title + ingredient strip) should be compact and occupy ~25% of total height
+   - very small space above the title; avoid large blank margin at top
    - clean top-center title in simple bold sans-serif text
    - title must be exactly one line (no wrapping); reduce font size to fit if needed
    - horizontal ingredient strip below title with 4-6 isolated ingredients on white background
    - small readable ingredient labels under each ingredient (short labels only)
-   - bottom 60-70% hero shot of finished dish, rich texture, vibrant color, realistic homemade look
+   - bottom ~75% hero shot of finished dish, rich texture, vibrant color, realistic homemade look
    - subtle contextual background props, softly blurred, minimal clutter
    - bright natural kitchen light, soft highlights, shallow depth of field
    - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, studio/editorial look

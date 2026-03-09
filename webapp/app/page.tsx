@@ -155,13 +155,16 @@ export default function HomePage() {
     dy: number,
     dw: number,
     dh: number,
-    position: "top" | "center" = "center"
+    position: "top" | "center" = "center",
+    yBias = 0.5
   ) {
     const scale = Math.max(dw / img.width, dh / img.height);
     const sw = dw / scale;
     const sh = dh / scale;
     const sx = Math.max(0, (img.width - sw) / 2);
-    const sy = position === "top" ? 0 : Math.max(0, (img.height - sh) / 2);
+    const ySpace = Math.max(0, img.height - sh);
+    const clampedBias = Math.min(1, Math.max(0, yBias));
+    const sy = position === "top" ? ySpace * clampedBias : ySpace * 0.5;
     ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
   }
 
@@ -192,7 +195,7 @@ export default function HomePage() {
 
       const width = 1080;
       const height = 1350;
-      const topHeight = Math.round(height * 0.38);
+      const topHeight = Math.round(height * 0.25);
       const bottomHeight = height - topHeight;
 
       const canvas = document.createElement("canvas");
@@ -203,7 +206,7 @@ export default function HomePage() {
 
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
-      drawCover(ctx, topImage, 0, 0, width, topHeight, "top");
+      drawCover(ctx, topImage, 0, 0, width, topHeight, "top", 0.22);
       drawCover(ctx, bottomImage, 0, topHeight, width, bottomHeight, "center");
 
       const blob = await new Promise<Blob>((resolve, reject) => {

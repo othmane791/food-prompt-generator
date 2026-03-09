@@ -282,15 +282,15 @@ pre {
 
 .split-top {
   top: 0;
-  height: 38%;
+  height: 25%;
   object-fit: cover;
-  object-position: top center;
+  object-position: center 22%;
   z-index: 2;
 }
 
 .split-bottom {
-  top: 38%;
-  height: 62%;
+  top: 25%;
+  height: 75%;
   object-fit: cover;
   object-position: center;
   z-index: 1;
