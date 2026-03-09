@@ -34,7 +34,7 @@ Hard rules:
 8) Keep captions short with this exact shape:
    - first line = hook/body sentence
    - second line = exact CTA line
-   - hook/body should be around 18-24 words (occasionally up to 28)
+   - keep hook/body concise and natural, but do not force a rigid word count
    - avoid bloated storytelling and generic filler
    - return max 5 caption options
 9) Do not use emojis except the CTA line emoji.
@@ -69,22 +69,16 @@ Hard rules:
    - Avoid repetitive filler phrases and avoid duplicate sentence structures.
    - Keep diction broad and varied; do not recycle the same 5-10 words across options.
    - Keep every option CTA-ready (line 2 exact CTA string).
-17) Recipe options must map to these exact viral angles (one each, in this order):
-   - Option 1 Shock reaction: pattern like "OMG ... one bite and ..."
-   - Option 2 Family disbelief flip: pattern like "my husband/family doubted it ... then ..."
-   - Option 3 Party/social proof: pattern like "brought this to a party ... gone first"
-   - Option 4 Nostalgia hit: pattern like "tastes like what grandma made ..."
-   - Option 5 Ease + payoff brag: mention ingredient count or dump-and-go simplicity + strong payoff
+17) Recipe options should cover a mix of viral angles (shock, disbelief flip, social proof, nostalgia, ease/payoff),
+    but do not force exact phrase patterns or fixed sentence templates.
 18) Keep voice bold and human:
    - conversational first-person voice
    - stronger emotional verbs/reactions
    - avoid bland phrasing like "easy dinner" without a payoff
    - no repeated sentence skeletons across options
-19) Viral token requirement:
-   - Every recipe caption must contain at least one reaction token OR one social token.
-   - Reaction examples (use broad variety): OMG, one bite, gone in minutes, plates were empty, smell was unreal, instant favorite, crazy good flavor, priceless reaction.
-   - Social examples (use broad variety): everyone asked for seconds, husband asked again, kids cleaned their plates, neighbors asked what smelled good, party guests asked for recipe.
-   - Do not overuse any single token; rotate vocabulary across the 5 options.
+19) Do not force any fixed keyword list.
+   - Use broad natural diction and rotate wording organically.
+   - Avoid repeating the same hook opener or reaction phrase across options.
 20) Recipe image prompt structure should be complete and ordered:
    - base photorealistic home-kitchen image description
    - smartphone camera angle and framing
@@ -104,6 +98,9 @@ Hard rules:
    - subtle contextual background props, softly blurred, minimal clutter
    - bright natural kitchen light, soft highlights, shallow depth of field
    - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, studio/editorial look
+22) If "featured_image_reference" is provided:
+   - align dish identity, serving style, and color direction with that image
+   - do not copy any text, logos, or watermarks from the reference
 
 Output must be valid JSON only (no markdown), with this shape:
 {

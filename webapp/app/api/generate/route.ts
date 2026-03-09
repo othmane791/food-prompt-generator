@@ -282,24 +282,13 @@ function buildUserPrompt(input: {
       recipe_style_mode: input.recipeStyleMode,
       caption_strategy: {
         source: "top-engagement analysis",
-        first_line_target_words: "18-24 (occasionally up to 28)",
         diction_goal: "high-variety colloquial social voice; avoid repetitive sterile phrasing",
-        recipe_cta_mix: [
-          "Full recipe 👇 💬",
-          "Recipe in comments ⬇️",
-          "Recipe in first comment 👇"
+        constraints: [
+          "avoid repeating exact sentence structures across options",
+          "vary openings, rhythm, and sentence length naturally",
+          "keep hooks specific to recipe/article context, not generic filler"
         ],
-        lexical_bank: {
-          reaction_tokens: REACTION_TOKEN_POOL,
-          social_tokens: SOCIAL_TOKEN_POOL
-        },
-        target_patterns: [
-          "first-person testimonial voice",
-          "family/social proof mention",
-          "reaction and sensory language",
-          "concrete detail from title",
-          "short hook + fixed CTA"
-        ],
+        cta_policy: "include clear post CTA line",
         max_options: 5
       },
       recipe_image_strategy: {
@@ -569,49 +558,40 @@ function enrichCaptionBody(body: string, type: InputType, index: number, title: 
   let line = normalizeCaptionBody(body);
   if (!line) return line;
 
-  if (type === "recipe") {
-    const hasReaction = hasTokenFromPool(line, REACTION_TOKEN_POOL);
-    const hasSocial = hasTokenFromPool(line, SOCIAL_TOKEN_POOL);
-    if (!hasReaction && !hasSocial) {
-      const mixPool = ((titleSeed(title) + index) % 2 === 0 ? REACTION_TOKEN_POOL : SOCIAL_TOKEN_POOL);
-      const token = pickSeeded(mixPool, titleSeed(title) + index * 7);
-      line = `${line}, ${token}`;
-    }
-  }
-
-  if (type === "recipe") {
-    const minWords = 14;
-    const maxWords = 25;
-    return clampWordRange(line, minWords, maxWords, ["at my house", "this week"]);
-  }
-  return clampWordRange(line, 18, 28, ["for dinner tonight", "at my house", "this week"]);
+  if (type === "recipe") return line;
+  return clampWordRange(line, 14, 36, ["at my house", "this week"]);
 }
 
 function postProcessCaptionBodies(bodies: string[], type: InputType, title: string): string[] {
   const out: string[] = [];
   const seenStem = new Set<string>();
   const seenExact = new Set<string>();
-  const targetCount = type === "recipe" ? 5 : Math.min(5, Math.max(5, bodies.length));
+  const targetCount = 5;
   const available = bodies.map((body) => normalizeCaptionBody(body));
 
   if (type === "recipe") {
-    for (let angle = 0; angle < 5; angle++) {
-      const variantSeed = angle + 1 + (titleSeed(title) % 97);
-      let line = buildRecipeViralAngle(angle, title, variantSeed);
-      line = enrichCaptionBody(line, type, angle, title);
-      const key = normalizeCaptionBody(line).toLowerCase();
-      const sKey = stemKey(line);
-      if (seenExact.has(key) || seenStem.has(sKey)) {
-        line = enrichCaptionBody(buildRecipeViralAngle(angle, title, variantSeed + 31), type, angle + 31, title);
-      }
-      const finalKey = normalizeCaptionBody(line).toLowerCase();
-      const finalStem = stemKey(line);
-      if (seenExact.has(finalKey)) continue;
-      seenExact.add(finalKey);
-      seenStem.add(finalStem);
-      out.push(line);
+    for (let i = 0; i < available.length && out.length < targetCount; i++) {
+      const source = normalizeCaptionBody(available[i] || "");
+      if (!source) continue;
+      const key = normalizeCaptionBody(source).toLowerCase();
+      const sKey = stemKey(source);
+      if (seenExact.has(key) || seenStem.has(sKey)) continue;
+      seenExact.add(key);
+      seenStem.add(sKey);
+      out.push(source);
     }
-    return out;
+    while (out.length < targetCount) {
+      const filler = normalizeCaptionBody(`This ${title || "recipe"} is worth trying.`);
+      const key = filler.toLowerCase();
+      if (!seenExact.has(key)) {
+        seenExact.add(key);
+        seenStem.add(stemKey(filler));
+        out.push(filler);
+      } else {
+        out.push(normalizeCaptionBody(`This ${title || "recipe"} is worth making again.`));
+      }
+    }
+    return out.slice(0, targetCount);
   }
 
   for (let i = 0; i < targetCount; i++) {
@@ -678,10 +658,8 @@ function normalizeCaption(caption: string, type: InputType, index = 0, title = "
       ? canonicalRecipeCta(secondLineRaw, index, title)
       : canonicalArticleCta(secondLineRaw);
 
-  if (type === "recipe") {
-    firstLine = clampWordRange(firstLine, 14, 25, ["at my house", "this week"]);
-  } else {
-    firstLine = clampWordRange(firstLine, 18, 28, ["for dinner", "this week", "at my house"]);
+  if (type !== "recipe") {
+    firstLine = clampWordRange(firstLine, 14, 36, ["for dinner", "this week", "at my house"]);
   }
   firstLine = firstLine.replace(/[.。]\s*$/, "");
 
@@ -744,11 +722,11 @@ function inferRecipeAction(title: string): string {
 function houseStyleBodies(type: InputType): string[] {
   if (type === "recipe") {
     return [
-      buildRecipeViralAngle(0, "house", 1),
-      buildRecipeViralAngle(1, "house", 2),
-      buildRecipeViralAngle(2, "house", 3),
-      buildRecipeViralAngle(3, "house", 4),
-      buildRecipeViralAngle(4, "house", 5)
+      "Tried this once and saved it immediately",
+      "This one surprised me in the best way",
+      "Made it for a get-together and people asked for it again",
+      "Comfort-food energy with a simple method",
+      "Easy to make and very hard to stop eating"
     ];
   }
   return [
