@@ -19,7 +19,7 @@ Hard rules:
    - close or medium-close composition with tight crop so food dominates frame
    - recipe style must follow input "recipe_style_mode":
      * "action_prep": in-progress cooking action, never finished plated dish
-     * "ingredient_strip_recipe": header-only panel for composition (title + ingredient strip on top, blank lower area)
+     * "ingredient_strip_recipe": clean two-section image with top ingredient strip and bottom hero dish
    - action examples for action_prep mode: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan
    - realistic food textures: irregular browning, bubbling sauce/oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, natural imperfections
    - warm natural side window light with soft shadows and uneven highlights (not studio)
@@ -34,7 +34,7 @@ Hard rules:
 8) Keep captions short with this exact shape:
    - first line = hook/body sentence
    - second line = exact CTA line
-   - keep hook/body concise and natural, but do not force a rigid word count
+   - hook/body should be around 18-24 words (occasionally up to 28)
    - avoid bloated storytelling and generic filler
    - return max 5 caption options
 9) Do not use emojis except the CTA line emoji.
@@ -45,7 +45,7 @@ Hard rules:
    - no logos/watermarks
 12) For recipe posts:
    - action_prep mode: prioritize active prep/cooking moment and texture detail.
-   - ingredient_strip_recipe mode: prioritize compact mobile-readable title + ingredient strip header only.
+   - ingredient_strip_recipe mode: prioritize mobile-readable title + ingredient strip + finished-dish hero.
 13) Visual profile constraints from historical analysis:
    - recipe: mostly photo-first, warm tones, practical close framing, kitchen realism, low text-overlay usage.
    - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
@@ -69,16 +69,22 @@ Hard rules:
    - Avoid repetitive filler phrases and avoid duplicate sentence structures.
    - Keep diction broad and varied; do not recycle the same 5-10 words across options.
    - Keep every option CTA-ready (line 2 exact CTA string).
-17) Recipe options should cover a mix of viral angles (shock, disbelief flip, social proof, nostalgia, ease/payoff),
-    but do not force exact phrase patterns or fixed sentence templates.
+17) Recipe options must map to these exact viral angles (one each, in this order):
+   - Option 1 Shock reaction: pattern like "OMG ... one bite and ..."
+   - Option 2 Family disbelief flip: pattern like "my husband/family doubted it ... then ..."
+   - Option 3 Party/social proof: pattern like "brought this to a party ... gone first"
+   - Option 4 Nostalgia hit: pattern like "tastes like what grandma made ..."
+   - Option 5 Ease + payoff brag: mention ingredient count or dump-and-go simplicity + strong payoff
 18) Keep voice bold and human:
    - conversational first-person voice
    - stronger emotional verbs/reactions
    - avoid bland phrasing like "easy dinner" without a payoff
    - no repeated sentence skeletons across options
-19) Do not force any fixed keyword list.
-   - Use broad natural diction and rotate wording organically.
-   - Avoid repeating the same hook opener or reaction phrase across options.
+19) Viral token requirement:
+   - Every recipe caption must contain at least one reaction token OR one social token.
+   - Reaction examples (use broad variety): OMG, one bite, gone in minutes, plates were empty, smell was unreal, instant favorite, crazy good flavor, priceless reaction.
+   - Social examples (use broad variety): everyone asked for seconds, husband asked again, kids cleaned their plates, neighbors asked what smelled good, party guests asked for recipe.
+   - Do not overuse any single token; rotate vocabulary across the 5 options.
 20) Recipe image prompt structure should be complete and ordered:
    - base photorealistic home-kitchen image description
    - smartphone camera angle and framing
@@ -90,19 +96,14 @@ Hard rules:
    - overlay headline instruction (for text_overlay_prompt only)
    - realism/staging constraints
 21) For "ingredient_strip_recipe" mode, generate one clean prompt that includes:
-   - portrait 4:5 (1080x1350), clean white canvas
-   - top area (title + ingredient strip) should be compact and occupy ~25% of total height
-   - very small space above the title; avoid large blank margin at top
+   - portrait 4:5, medium-close, slightly top-down ~30-45-degree view (not overhead)
    - clean top-center title in simple bold sans-serif text
-   - title must be exactly one line (no wrapping); reduce font size to fit if needed
    - horizontal ingredient strip below title with 4-6 isolated ingredients on white background
    - small readable ingredient labels under each ingredient (short labels only)
-   - lower ~75% must remain blank white empty area (reserved for external bottom-image composition)
-   - no dish photo, no props, no textures, no shadows, no gradients in lower area
-   - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, decorative elements
-22) If "featured_image_reference" is provided:
-   - align dish identity, serving style, and color direction with that image
-   - do not copy any text, logos, or watermarks from the reference
+   - bottom 60-70% hero shot of finished dish, rich texture, vibrant color, realistic homemade look
+   - subtle contextual background props, softly blurred, minimal clutter
+   - bright natural kitchen light, soft highlights, shallow depth of field
+   - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, studio/editorial look
 
 Output must be valid JSON only (no markdown), with this shape:
 {

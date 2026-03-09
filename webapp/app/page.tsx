@@ -17,7 +17,6 @@ type ApiSuccess = {
     recipeImageFocus?: RecipeImageFocus | null;
     cameraAngleMode?: CameraAngleMode | null;
     recipeStyleMode?: RecipeStyleMode | null;
-    generateImage?: boolean;
     featuredImageUrl?: string | null;
   };
   generated: {
@@ -35,14 +34,6 @@ type ApiSuccess = {
     caption_only_options?: string[];
     notes?: string;
   };
-  generated_image?: {
-    prompt_name: string;
-    model: string;
-    used_reference_image: boolean;
-    data_url?: string | null;
-    remote_url?: string | null;
-    error?: string | null;
-  } | null;
 };
 
 export default function HomePage() {
@@ -54,14 +45,12 @@ export default function HomePage() {
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
   const [cameraAngleMode, setCameraAngleMode] = useState<CameraAngleMode>("regular_40_55");
   const [recipeStyleMode, setRecipeStyleMode] = useState<RecipeStyleMode>("action_prep");
-  const [generateImage, setGenerateImage] = useState(true);
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ApiSuccess | null>(null);
   const [copiedKey, setCopiedKey] = useState("");
-  const [downloadingComposed, setDownloadingComposed] = useState(false);
 
   const canSubmit = useMemo(() => title.trim().length > 0 || link.trim().length > 0, [title, link]);
   const mergedCaptionOptions = (
@@ -90,8 +79,7 @@ export default function HomePage() {
           aspectRatio,
           recipeImageFocus,
           cameraAngleMode,
-          recipeStyleMode,
-          generateImage
+          recipeStyleMode
         })
       });
 
@@ -124,109 +112,6 @@ export default function HomePage() {
 
   function recipeStyleLabel(mode?: RecipeStyleMode | null) {
     return mode === "ingredient_strip_recipe" ? "Ingredient strip recipe" : "Action / prep shot";
-  }
-
-  function shouldUseOriginalBottomImage(data: ApiSuccess): boolean {
-    return (
-      data.input.type === "recipe" &&
-      data.input.recipeStyleMode === "ingredient_strip_recipe" &&
-      !!data.input.featuredImageUrl &&
-      !!(data.generated_image?.data_url || data.generated_image?.remote_url)
-    );
-  }
-
-  function proxyImageUrl(url: string): string {
-    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
-  }
-
-  function loadImageElement(src: string): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
-      img.src = src;
-    });
-  }
-
-  function drawCover(
-    ctx: CanvasRenderingContext2D,
-    img: HTMLImageElement,
-    dx: number,
-    dy: number,
-    dw: number,
-    dh: number,
-    position: "top" | "center" = "center",
-    yBias = 0.5
-  ) {
-    const scale = Math.max(dw / img.width, dh / img.height);
-    const sw = dw / scale;
-    const sh = dh / scale;
-    const sx = Math.max(0, (img.width - sw) / 2);
-    const ySpace = Math.max(0, img.height - sh);
-    const clampedBias = Math.min(1, Math.max(0, yBias));
-    const sy = position === "top" ? ySpace * clampedBias : ySpace * 0.5;
-    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-  }
-
-  function slugifyFileName(input: string): string {
-    return (
-      input
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 60) || "recipe-image"
-    );
-  }
-
-  async function downloadComposedImage(data: ApiSuccess) {
-    if (!shouldUseOriginalBottomImage(data)) return;
-    const topRaw = data.generated_image?.data_url || data.generated_image?.remote_url || "";
-    const bottomRaw = data.input.featuredImageUrl || "";
-    if (!topRaw || !bottomRaw) return;
-
-    setDownloadingComposed(true);
-    try {
-      const topSrc = topRaw.startsWith("data:") ? topRaw : proxyImageUrl(topRaw);
-      const bottomSrc = proxyImageUrl(bottomRaw);
-      const [topImage, bottomImage] = await Promise.all([
-        loadImageElement(topSrc),
-        loadImageElement(bottomSrc)
-      ]);
-
-      const width = 1080;
-      const height = 1350;
-      const topHeight = Math.round(height * 0.25);
-      const bottomHeight = height - topHeight;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("Canvas context unavailable");
-
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
-      drawCover(ctx, topImage, 0, 0, width, topHeight, "top", 0.0);
-      drawCover(ctx, bottomImage, 0, topHeight, width, bottomHeight, "center");
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((out) => {
-          if (out) resolve(out);
-          else reject(new Error("Failed to create image file"));
-        }, "image/png");
-      });
-
-      const a = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      a.href = url;
-      a.download = `${slugifyFileName(data.input.title)}-1080x1350.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download composed image");
-    } finally {
-      setDownloadingComposed(false);
-    }
   }
 
   return (
@@ -343,15 +228,6 @@ export default function HomePage() {
             <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." />
           </label>
 
-          <label className="toggle-row" aria-label="Generate image">
-            <span>Generate image (API cost)</span>
-            <input
-              type="checkbox"
-              checked={generateImage}
-              onChange={(e) => setGenerateImage(e.target.checked)}
-            />
-          </label>
-
           <button type="submit" disabled={!canSubmit || loading}>
             {loading ? "Generating..." : "Generate"}
           </button>
@@ -377,79 +253,61 @@ export default function HomePage() {
                 ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}`
                 : ""})
             </h2>
-            {result.generated_image ? (
-              <div className="block">
-                <h3>Generated Image (OpenAI)</h3>
-                {result.generated_image.error ? (
-                  <p className="subhead error-inline">{result.generated_image.error}</p>
-                ) : null}
-                {result.generated_image.data_url || result.generated_image.remote_url ? (
-                  shouldUseOriginalBottomImage(result) ? (
-                    <>
-                      <div className="split-image-wrap" aria-label="Composed image with original bottom recipe photo">
-                        <img
-                          className="split-top"
-                          src={result.generated_image.data_url || result.generated_image.remote_url || ""}
-                          alt="Generated top template"
-                          loading="lazy"
-                        />
-                        <img
-                          className="split-bottom"
-                          src={result.input.featuredImageUrl || ""}
-                          alt="Original recipe bottom photo"
-                          loading="lazy"
-                        />
-                      </div>
-                      <div className="download-row">
-                        <button
-                          className="copy-btn"
-                          type="button"
-                          onClick={() => downloadComposedImage(result)}
-                          disabled={downloadingComposed}
-                        >
-                          {downloadingComposed ? "Preparing..." : "Download Final 1080x1350"}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="generated-image-wrap">
-                      <img
-                        src={result.generated_image.data_url || result.generated_image.remote_url || ""}
-                        alt="Generated recipe/article visual"
-                        loading="lazy"
-                      />
-                    </div>
-                  )
-                ) : null}
-              </div>
-            ) : result.input.generateImage === false ? (
-              <div className="block">
-                <h3>Generated Image (OpenAI)</h3>
-                <p className="subhead">Image generation is OFF. Prompts and captions generated only.</p>
+            {result.input.type === "recipe" && result.input.featuredImageUrl ? (
+              <div className="copy-item">
+                <div className="copy-label">Featured Image Reference (from link)</div>
+                <button
+                  className="copy-btn"
+                  type="button"
+                  onClick={() => copyText("featured-image-url", result.input.featuredImageUrl || "")}
+                  title="Copy featured image URL"
+                  aria-label="Copy featured image URL"
+                >
+                  {copiedKey === "featured-image-url" ? "Copied" : "📋 Copy"}
+                </button>
+                <pre className="copy-text">{result.input.featuredImageUrl}</pre>
+                <div className="featured-image-preview">
+                  <img src={result.input.featuredImageUrl} alt="Featured reference" loading="lazy" />
+                </div>
               </div>
             ) : null}
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">
                 <h3>{p.name}</h3>
-                <div className="copy-item">
-                  <div className="copy-label">Nanobanana v2 Prompt (Optional export)</div>
-                  <button
-                    className="copy-btn"
-                    type="button"
-                    onClick={() =>
-                      copyText(
-                        `prompt-nanobanana-${idx}`,
-                        p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""
-                      )
-                    }
-                    title="Copy Nanobanana v2 prompt"
-                    aria-label={`Copy Nanobanana v2 prompt for ${p.name}`}
-                  >
-                    {copiedKey === `prompt-nanobanana-${idx}` ? "Copied" : "📋 Copy"}
-                  </button>
-                  <pre className="copy-text">
-                    {p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""}
-                  </pre>
+                <div className="prompt-columns">
+                  <div className="copy-item">
+                    <div className="copy-label">OpenAI Prompt</div>
+                    <button
+                      className="copy-btn"
+                      type="button"
+                      onClick={() => copyText(`prompt-openai-${idx}`, p.openai_prompt || p.prompt || "")}
+                      title="Copy OpenAI prompt"
+                      aria-label={`Copy OpenAI prompt for ${p.name}`}
+                    >
+                      {copiedKey === `prompt-openai-${idx}` ? "Copied" : "📋 Copy"}
+                    </button>
+                    <pre className="copy-text">{p.openai_prompt || p.prompt || ""}</pre>
+                  </div>
+                  <div className="copy-item">
+                    <div className="copy-label">Nanobanana v2 Prompt</div>
+                    <button
+                      className="copy-btn"
+                      type="button"
+                      onClick={() =>
+                        copyText(
+                          `prompt-nanobanana-${idx}`,
+                          p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""
+                        )
+                      }
+                      title="Copy Nanobanana v2 prompt"
+                      aria-label={`Copy Nanobanana v2 prompt for ${p.name}`}
+                    >
+                      {copiedKey === `prompt-nanobanana-${idx}` ? "Copied" : "📋 Copy"}
+                    </button>
+                    <pre className="copy-text">
+                      {p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""}
+                    </pre>
+                  </div>
                 </div>
               </div>
             ))}

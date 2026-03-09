@@ -56,22 +56,6 @@ label {
   font-weight: 700;
 }
 
-.toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 0.65rem 0.75rem;
-  background: #fffdf9;
-}
-
-.toggle-row input[type="checkbox"] {
-  width: 1.05rem;
-  height: 1.05rem;
-  accent-color: var(--accent);
-}
-
 .camera-angle-fieldset {
   margin: 0;
   border: 1px solid var(--line);
@@ -247,76 +231,6 @@ pre {
 
 .copy-text {
   grid-column: 1 / -1;
-}
-
-.generated-image-wrap {
-  margin-top: 0.6rem;
-}
-
-.generated-image-wrap img {
-  display: block;
-  width: min(560px, 100%);
-  max-width: 100%;
-  height: auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-}
-
-.split-image-wrap {
-  position: relative;
-  width: min(560px, 100%);
-  aspect-ratio: 4 / 5;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #fff;
-  margin-top: 0.6rem;
-}
-
-.split-image-wrap img {
-  position: absolute;
-  left: 0;
-  width: 100%;
-}
-
-.split-top {
-  top: 0;
-  height: 25%;
-  object-fit: cover;
-  object-position: center top;
-  z-index: 2;
-}
-
-.split-bottom {
-  top: 25%;
-  height: 75%;
-  object-fit: cover;
-  object-position: center;
-  z-index: 1;
-}
-
-.download-row {
-  margin-top: 0.6rem;
-  display: flex;
-}
-
-.error-inline {
-  color: #9c2f22;
-}
-
-.featured-image-preview {
-  grid-column: 1 / -1;
-}
-
-.featured-image-preview img {
-  display: block;
-  max-width: 100%;
-  width: min(360px, 100%);
-  height: auto;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
 }
 
 .subhead {
