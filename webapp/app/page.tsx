@@ -6,7 +6,7 @@ type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 type CameraAngleMode = "regular_40_55" | "above";
-type RecipeStyleMode = "action_prep" | "viral_recipe_infographic";
+type RecipeStyleMode = "action_prep" | "ingredient_strip_recipe";
 
 type ApiSuccess = {
   input: {
@@ -110,7 +110,7 @@ export default function HomePage() {
   }
 
   function recipeStyleLabel(mode?: RecipeStyleMode | null) {
-    return mode === "viral_recipe_infographic" ? "Viral recipe infographic" : "Action / prep shot";
+    return mode === "ingredient_strip_recipe" ? "Ingredient strip recipe" : "Action / prep shot";
   }
 
   return (
@@ -135,7 +135,7 @@ export default function HomePage() {
             <select
               value={aspectRatio}
               onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-              disabled={type === "recipe" && recipeStyleMode === "viral_recipe_infographic"}
+              disabled={type === "recipe" && recipeStyleMode === "ingredient_strip_recipe"}
             >
               <option value="2:3">2:3 (1080x1620)</option>
               <option value="4:5">4:5 (1080x1350)</option>
@@ -150,14 +150,14 @@ export default function HomePage() {
                 onChange={(e) => {
                   const next = e.target.value as RecipeStyleMode;
                   setRecipeStyleMode(next);
-                  if (next === "viral_recipe_infographic") {
+                  if (next === "ingredient_strip_recipe") {
                     setAspectRatio("4:5");
                     setCameraAngleMode("regular_40_55");
                   }
                 }}
               >
                 <option value="action_prep">Action / Prep Shot</option>
-                <option value="viral_recipe_infographic">Viral Recipe Infographic</option>
+                <option value="ingredient_strip_recipe">Ingredient Strip Recipe</option>
               </select>
             </label>
           ) : null}
@@ -175,9 +175,9 @@ export default function HomePage() {
             </label>
           ) : null}
 
-          {type === "recipe" && recipeStyleMode === "viral_recipe_infographic" ? (
+          {type === "recipe" && recipeStyleMode === "ingredient_strip_recipe" ? (
             <p className="subhead">
-              Infographic mode uses a fixed slightly top-down 45° layout with finished-dish hero and ingredient checklist.
+              Ingredient strip mode uses a clean two-section layout with title + ingredient strip above the hero dish.
             </p>
           ) : null}
 
@@ -245,10 +245,10 @@ export default function HomePage() {
             <h2>
               Image Prompts ({result.input.aspectRatio || "4:5"}
               {result.input.recipeStyleMode ? `, ${recipeStyleLabel(result.input.recipeStyleMode)}` : ""}
-              {result.input.recipeStyleMode !== "viral_recipe_infographic" && result.input.recipeImageFocus
+              {result.input.recipeStyleMode !== "ingredient_strip_recipe" && result.input.recipeImageFocus
                 ? `, ${result.input.recipeImageFocus}`
                 : ""}
-              {result.input.recipeStyleMode !== "viral_recipe_infographic" && result.input.cameraAngleMode
+              {result.input.recipeStyleMode !== "ingredient_strip_recipe" && result.input.cameraAngleMode
                 ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}`
                 : ""})
             </h2>
