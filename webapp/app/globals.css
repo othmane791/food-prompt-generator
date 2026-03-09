@@ -263,6 +263,39 @@ pre {
   background: #fff;
 }
 
+.split-image-wrap {
+  position: relative;
+  width: min(560px, 100%);
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  margin-top: 0.6rem;
+}
+
+.split-image-wrap img {
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
+.split-top {
+  top: 0;
+  height: 38%;
+  object-fit: cover;
+  object-position: top center;
+  z-index: 2;
+}
+
+.split-bottom {
+  top: 38%;
+  height: 62%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 1;
+}
+
 .error-inline {
   color: #9c2f22;
 }

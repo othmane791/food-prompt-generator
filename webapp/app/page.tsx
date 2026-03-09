@@ -125,6 +125,15 @@ export default function HomePage() {
     return mode === "ingredient_strip_recipe" ? "Ingredient strip recipe" : "Action / prep shot";
   }
 
+  function shouldUseOriginalBottomImage(data: ApiSuccess): boolean {
+    return (
+      data.input.type === "recipe" &&
+      data.input.recipeStyleMode === "ingredient_strip_recipe" &&
+      !!data.input.featuredImageUrl &&
+      !!(data.generated_image?.data_url || data.generated_image?.remote_url)
+    );
+  }
+
   return (
     <main className="page">
       <section className="hero">
@@ -280,13 +289,30 @@ export default function HomePage() {
                   <p className="subhead error-inline">{result.generated_image.error}</p>
                 ) : null}
                 {result.generated_image.data_url || result.generated_image.remote_url ? (
-                  <div className="generated-image-wrap">
-                    <img
-                      src={result.generated_image.data_url || result.generated_image.remote_url || ""}
-                      alt="Generated recipe/article visual"
-                      loading="lazy"
-                    />
-                  </div>
+                  shouldUseOriginalBottomImage(result) ? (
+                    <div className="split-image-wrap" aria-label="Composed image with original bottom recipe photo">
+                      <img
+                        className="split-top"
+                        src={result.generated_image.data_url || result.generated_image.remote_url || ""}
+                        alt="Generated top template"
+                        loading="lazy"
+                      />
+                      <img
+                        className="split-bottom"
+                        src={result.input.featuredImageUrl || ""}
+                        alt="Original recipe bottom photo"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <div className="generated-image-wrap">
+                      <img
+                        src={result.generated_image.data_url || result.generated_image.remote_url || ""}
+                        alt="Generated recipe/article visual"
+                        loading="lazy"
+                      />
+                    </div>
+                  )
                 ) : null}
               </div>
             ) : result.input.generateImage === false ? (
