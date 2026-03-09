@@ -233,6 +233,38 @@ pre {
   grid-column: 1 / -1;
 }
 
+.generated-image-wrap {
+  margin-top: 0.6rem;
+}
+
+.generated-image-wrap img {
+  display: block;
+  width: min(560px, 100%);
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.error-inline {
+  color: #9c2f22;
+}
+
+.featured-image-preview {
+  grid-column: 1 / -1;
+}
+
+.featured-image-preview img {
+  display: block;
+  max-width: 100%;
+  width: min(360px, 100%);
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
 .subhead {
   margin: 0.7rem 0 0.1rem;
   font-weight: 700;

@@ -22,6 +22,7 @@ type LinkExtract = {
   description: string;
   bodySnippet: string;
   featuredImageUrl?: string;
+  recipeIngredients?: string[];
 };
 
 type GeneratedShape = {
@@ -38,6 +39,15 @@ type GeneratedShape = {
   merged_caption_options?: string[];
   caption_only_options?: string[];
   notes?: string;
+};
+
+type GeneratedImage = {
+  prompt_name: string;
+  model: string;
+  used_reference_image: boolean;
+  data_url?: string | null;
+  remote_url?: string | null;
+  error?: string | null;
 };
 
 function normalizeType(value?: string): InputType {
@@ -93,6 +103,129 @@ function toAbsoluteUrl(raw: string, base: string): string {
   }
 }
 
+function shortIngredientLabel(raw: string): string | null {
+  let text = stripHtml(raw || "").toLowerCase().trim();
+  if (!text) return null;
+
+  text = text.replace(/\([^)]*\)/g, " ");
+  text = text.replace(/^[\d\s/.,-]+/, "");
+  text = text.replace(
+    /^(cups?|tablespoons?|tbsp|teaspoons?|tsp|ounces?|oz|pounds?|lbs?|grams?|g|kilograms?|kg|milliliters?|ml|liters?|l|packages?|pkg|packets?|cans?|jars?|cloves?|sticks?|slices?|bunches?|pinch|dash)\b\s*/i,
+    ""
+  );
+  text = text.replace(/^of\s+/, "");
+  text = text.split(",")[0].trim();
+  text = text.replace(/\s+/g, " ");
+
+  const canonical: Array<[RegExp, string]> = [
+    [/\bstrawberr(y|ies)\b/, "strawberries"],
+    [/\bpineapple\b/, "pineapple"],
+    [/\bmini\s+marshmallows?\b|\bmarshmallows?\b/, "mini marshmallows"],
+    [/\bcream cheese\b/, "cream cheese"],
+    [/\bcool whip\b|\bwhipped topping\b|\bwhipped cream\b/, "whipped topping"],
+    [/\bjell-?o\b|\bgelatin\b/, "strawberry gelatin"],
+    [/\bpudding\b/, "pudding mix"],
+    [/\bchicken\b/, "chicken breast"],
+    [/\bbeef\b/, "beef"],
+    [/\bground beef\b/, "ground beef"],
+    [/\bcabbage\b/, "shredded cabbage"],
+    [/\bcarrot\b/, "julienned carrot"],
+    [/\bonion\b/, "onion"],
+    [/\bgarlic\b/, "garlic"],
+    [/\bmayo\b|\bmayonnaise\b/, "mayo"],
+    [/\bvinegar\b/, "vinegar"],
+    [/\bcheese\b/, "cheese"],
+    [/\bnoodles?\b/, "noodles"],
+    [/\brice\b/, "rice"],
+    [/\bpotato(es)?\b/, "potatoes"],
+    [/\bbutter\b/, "butter"],
+    [/\boil\b/, "oil"],
+    [/\bbroth\b/, "broth"],
+    [/\bcelery\b/, "celery"],
+    [/\btomato(es)?\b/, "tomato"],
+    [/\bflour\b/, "flour"],
+    [/\bsugar\b/, "sugar"],
+    [/\beggs?\b/, "eggs"],
+    [/\bmilk\b/, "milk"],
+    [/\bvanilla\b/, "vanilla"],
+    [/\bsalt\b/, "salt"],
+    [/\bpepper\b/, "pepper"]
+  ];
+
+  for (const [re, label] of canonical) {
+    if (re.test(text)) return label;
+  }
+
+  text = text.replace(
+    /\b(fresh|frozen|chopped|diced|minced|grated|ground|boneless|skinless|large|small|medium|extra|virgin)\b/g,
+    " "
+  );
+  text = text.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+
+  const words = text.split(" ").slice(0, 4);
+  const clipped = words.join(" ").trim();
+  return clipped.length >= 2 ? clipped : null;
+}
+
+function collectRecipeNodes(node: unknown, out: Array<Record<string, unknown>>): void {
+  if (!node) return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectRecipeNodes(item, out);
+    return;
+  }
+  if (typeof node !== "object") return;
+
+  const obj = node as Record<string, unknown>;
+  const rawType = obj["@type"];
+  const types = Array.isArray(rawType) ? rawType : [rawType];
+  const isRecipe = types.some((t) => typeof t === "string" && /recipe/i.test(t));
+  if (isRecipe) out.push(obj);
+
+  for (const value of Object.values(obj)) collectRecipeNodes(value, out);
+}
+
+function extractRecipeIngredientsFromHtml(html: string): string[] {
+  const blocks = Array.from(
+    html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)
+  );
+  if (!blocks.length) return [];
+
+  const labels: string[] = [];
+  for (const block of blocks) {
+    const raw = (block[1] || "").trim();
+    if (!raw) continue;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+
+    const recipeNodes: Array<Record<string, unknown>> = [];
+    collectRecipeNodes(parsed, recipeNodes);
+
+    for (const recipe of recipeNodes) {
+      const ing = recipe.recipeIngredient;
+      const rawIngredients =
+        typeof ing === "string"
+          ? ing.split(/\n|;/).map((s) => s.trim())
+          : Array.isArray(ing)
+            ? ing.filter((v): v is string => typeof v === "string")
+            : [];
+
+      for (const item of rawIngredients) {
+        const label = shortIngredientLabel(item);
+        if (label) labels.push(label);
+      }
+    }
+  }
+
+  const unique = Array.from(new Set(labels.map((s) => s.trim()).filter(Boolean)));
+  return unique.slice(0, 12);
+}
+
 async function fetchLinkData(url: string): Promise<LinkExtract> {
   const res = await fetch(url, {
     method: "GET",
@@ -110,12 +243,13 @@ async function fetchLinkData(url: string): Promise<LinkExtract> {
   const title = extractTag(html, "title");
   const description = extractMeta(html, "description") || extractMeta(html, "og:description");
   const bodySnippet = stripHtml(html).slice(0, 1600);
+  const recipeIngredients = extractRecipeIngredientsFromHtml(html);
   const rawFeatured =
     extractMeta(html, "og:image") ||
     extractMeta(html, "twitter:image") ||
     extractMeta(html, "twitter:image:src");
   const featuredImageUrl = rawFeatured ? toAbsoluteUrl(rawFeatured, url) : undefined;
-  return { title, description, bodySnippet, featuredImageUrl };
+  return { title, description, bodySnippet, featuredImageUrl, recipeIngredients };
 }
 
 function buildUserPrompt(input: {
@@ -652,6 +786,7 @@ function recipeHandInteraction(title: string, promptName: string): string | null
 
 type RecipeCategory =
   | "coleslaw_salad"
+  | "dessert_salad"
   | "casserole"
   | "soup"
   | "dessert"
@@ -663,7 +798,13 @@ type RecipeCategory =
 
 function inferRecipeCategory(title: string): RecipeCategory {
   const t = title.toLowerCase();
-  if (/\b(coleslaw|slaw|salad)\b/.test(t)) return "coleslaw_salad";
+  if (/\b(coleslaw|slaw)\b/.test(t)) return "coleslaw_salad";
+  if (/\bsalad\b/.test(t)) {
+    if (/\b(strawberr|berry|jell-?o|gelatin|marshmallow|cool whip|whipped|pudding|dessert|fluff|crackle|ambrosia)\b/.test(t)) {
+      return "dessert_salad";
+    }
+    return "coleslaw_salad";
+  }
   if (/\b(casserole|bake|lasagna)\b/.test(t)) return "casserole";
   if (/\b(soup|stew|chili|broth)\b/.test(t)) return "soup";
   if (/\b(cake|cookie|brownie|dessert|pie|cobbler|frosting)\b/.test(t)) return "dessert";
@@ -676,6 +817,7 @@ function inferRecipeCategory(title: string): RecipeCategory {
 
 function ingredientStripVessel(category: RecipeCategory): string {
   if (category === "coleslaw_salad") return "a clear glass bowl";
+  if (category === "dessert_salad") return "a clear glass dessert bowl";
   if (category === "casserole") return "a rustic ceramic baking dish";
   if (category === "soup") return "a rustic soup bowl";
   if (category === "dessert") return "a cake stand or dessert plate";
@@ -688,6 +830,7 @@ function ingredientStripVessel(category: RecipeCategory): string {
 
 function ingredientStripBackground(category: RecipeCategory): string {
   if (category === "coleslaw_salad") return "crispy fried chicken pieces and a kitchen towel";
+  if (category === "dessert_salad") return "fresh berries, a dessert spoon, and a folded linen napkin";
   if (category === "casserole") return "a serving spoon, folded napkin, and extra casserole dish";
   if (category === "soup") return "a bread basket and butter knife";
   if (category === "dessert") return "a frosting bowl, whisk, and sliced dessert";
@@ -698,9 +841,12 @@ function ingredientStripBackground(category: RecipeCategory): string {
   return "subtle kitchen props and related side ingredients";
 }
 
-function ingredientStripIngredients(category: RecipeCategory): string[] {
+function ingredientStripDefaultIngredients(category: RecipeCategory): string[] {
   if (category === "coleslaw_salad") {
     return ["shredded cabbage", "julienned carrot", "onion", "mayo", "vinegar", "salt & pepper"];
+  }
+  if (category === "dessert_salad") {
+    return ["strawberries", "pineapple", "cream cheese", "whipped topping", "mini marshmallows", "strawberry gelatin"];
   }
   if (category === "casserole") {
     return ["chicken", "cream sauce", "cheese", "onion", "garlic", "seasoning"];
@@ -726,16 +872,66 @@ function ingredientStripIngredients(category: RecipeCategory): string[] {
   return ["main ingredient", "oil or butter", "onion", "garlic", "seasoning", "herbs"];
 }
 
-function buildIngredientStripRecipePrompt(title: string, ratioText: string, referenceImageUrl?: string): string {
+function ingredientStripIngredients(category: RecipeCategory, title: string, linkData?: LinkExtract): string[] {
+  const defaults = ingredientStripDefaultIngredients(category);
+  const linked = (linkData?.recipeIngredients || []).map((x) => shortIngredientLabel(x) || "").filter(Boolean);
+  if (linked.length >= 4) {
+    return Array.from(new Set(linked)).slice(0, 6);
+  }
+
+  const source = `${title} ${linkData?.description || ""} ${linkData?.bodySnippet || ""}`.toLowerCase();
+  const inferred: string[] = [];
+  const inferRules: Array<[RegExp, string]> = [
+    [/\bstrawberr(y|ies)\b/, "strawberries"],
+    [/\bpineapple\b/, "pineapple"],
+    [/\bmini\s+marshmallows?\b|\bmarshmallows?\b/, "mini marshmallows"],
+    [/\bcream cheese\b/, "cream cheese"],
+    [/\bcool whip\b|\bwhipped topping\b|\bwhipped cream\b/, "whipped topping"],
+    [/\bjell-?o\b|\bgelatin\b/, "strawberry gelatin"],
+    [/\bpudding\b/, "pudding mix"],
+    [/\bchicken\b/, "chicken breast"],
+    [/\bbeef\b/, "beef"],
+    [/\bonion\b/, "onion"],
+    [/\bgarlic\b/, "garlic"],
+    [/\bcabbage\b/, "shredded cabbage"],
+    [/\bcarrot\b/, "julienned carrot"],
+    [/\bmayo\b|\bmayonnaise\b/, "mayo"],
+    [/\bvinegar\b/, "vinegar"],
+    [/\bnoodles?\b/, "noodles"],
+    [/\bcheese\b/, "cheese"],
+    [/\bbroth\b/, "broth"],
+    [/\bpotato(es)?\b/, "potatoes"],
+    [/\brice\b/, "rice"],
+    [/\bflour\b/, "flour"],
+    [/\bsugar\b/, "sugar"],
+    [/\beggs?\b/, "eggs"],
+    [/\bmilk\b/, "milk"],
+    [/\bvanilla\b/, "vanilla"]
+  ];
+
+  for (const [pattern, label] of inferRules) {
+    if (pattern.test(source)) inferred.push(label);
+  }
+
+  const uniqueInferred = Array.from(new Set(inferred));
+  if (uniqueInferred.length >= 4) return uniqueInferred.slice(0, 6);
+
+  const merged = Array.from(new Set([...uniqueInferred, ...defaults]));
+  return merged.slice(0, 6);
+}
+
+function buildIngredientStripRecipePrompt(
+  title: string,
+  ratioText: string,
+  _referenceImageUrl?: string,
+  linkData?: LinkExtract
+): string {
   const category = inferRecipeCategory(title);
   const vessel = ingredientStripVessel(category);
   const bg = ingredientStripBackground(category);
-  const ingredients = ingredientStripIngredients(category).slice(0, 6);
-  const refLine = referenceImageUrl
-    ? ` Use this featured image as visual reference for dish identity and styling (do not copy logos/text): ${referenceImageUrl}.`
-    : "";
+  const ingredients = ingredientStripIngredients(category, title, linkData).slice(0, 6);
   return normalizePromptText(
-    `Photorealistic viral recipe image in ${ratioText}. Clean two-section layout optimized for Facebook and Pinterest mobile feeds. Top section: centered title "${title}" in bold simple sans-serif black text, no ribbon, no badge, no decorative banner. Directly below title, a horizontal ingredient strip on clean white background showing isolated ingredients evenly spaced with small labels under each: ${ingredients.join(", ")}. Labels must be short and mobile-readable. Bottom 60-70% section: tight medium-close hero shot of the finished dish in ${vessel}, camera slightly above at 30-45 degrees (not overhead), food filling most of frame. Dish should look glossy, rich, textured, appetizing, realistic homemade cooking with visible sauce shine, vegetables, herbs or scallions, and natural texture variation. Bright natural kitchen light with soft highlights and gentle depth of field. Subtle contextual background props (${bg}) softly blurred, clean and not cluttered. Strong vibrant food color contrast, scroll-stopping but realistic.${refLine} No infographic bullet lists, no checkmark list, no decorative ribbons, no step instructions, no logos, no watermarks, no cluttered background, no pure overhead flat lay, no studio look.`
+    `Photorealistic viral recipe image in ${ratioText}. Clean two-section layout optimized for Facebook and Pinterest mobile feeds. Top section: centered title "${title}" in bold simple sans-serif black text, no ribbon, no badge, no decorative banner. Directly below title, a horizontal ingredient strip on clean white background showing isolated ingredients evenly spaced with small labels under each: ${ingredients.join(", ")}. Labels must be short and mobile-readable. Bottom 60-70% section: tight medium-close hero shot of the finished dish in ${vessel}, camera slightly above at 30-45 degrees (not overhead), food filling most of frame. Dish should look glossy, rich, textured, appetizing, realistic homemade cooking with visible sauce shine, vegetables, herbs or scallions, and natural texture variation. Bright natural kitchen light with soft highlights and gentle depth of field. Subtle contextual background props (${bg}) softly blurred, clean and not cluttered. Strong vibrant food color contrast, scroll-stopping but realistic. No infographic bullet lists, no checkmark list, no decorative ribbons, no step instructions, no logos, no watermarks, no cluttered background, no pure overhead flat lay, no studio look.`
   );
 }
 
@@ -768,7 +964,8 @@ function enforceVisualProfile(
   title: string,
   cameraAngleMode: CameraAngleMode,
   recipeStyleMode: RecipeStyleMode,
-  referenceImageUrl?: string
+  referenceImageUrl?: string,
+  linkData?: LinkExtract
 ): string {
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
@@ -778,7 +975,7 @@ function enforceVisualProfile(
     .replace(/\s+/g, " ")
     .trim();
   if (type === "recipe" && recipeStyleMode === "ingredient_strip_recipe") {
-    return buildIngredientStripRecipePrompt(title, ratioText, referenceImageUrl);
+    return buildIngredientStripRecipePrompt(title, ratioText, referenceImageUrl, linkData);
   }
   const overlaySentence = recipeOverlaySentence(title);
   const actionMoment = recipeActionMoment(title, name);
@@ -803,7 +1000,7 @@ function enforceVisualProfile(
   const articleRealismStyle =
     "Casual smartphone kitchen-photo feel with slight handheld perspective and mildly imperfect framing. Keep composition practical and natural, with side window light, soft shadows, and realistic texture detail, while avoiding polished studio styling or perfect symmetry.";
   const referenceLine = referenceImageUrl
-    ? `Reference image alignment: use featured image as visual reference for dish identity, serving style, and color direction; do not copy any text/logo elements. Reference URL: ${referenceImageUrl}.`
+    ? "If your image tool supports reference images, attach the featured image as a separate image input (not as text URL)."
     : "";
 
   const parts: string[] = [cleaned];
@@ -859,10 +1056,11 @@ function buildNanobananaPrompt(
   title: string,
   cameraAngleMode: CameraAngleMode,
   recipeStyleMode: RecipeStyleMode,
-  referenceImageUrl?: string
+  referenceImageUrl?: string,
+  linkData?: LinkExtract
 ): string {
   if (type === "recipe" && recipeStyleMode === "ingredient_strip_recipe") {
-    return buildIngredientStripRecipePrompt(title, "portrait 4:5 (1080x1350)", referenceImageUrl);
+    return buildIngredientStripRecipePrompt(title, "portrait 4:5 (1080x1350)", referenceImageUrl, linkData);
   }
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
@@ -893,7 +1091,7 @@ function buildNanobananaPrompt(
     "Casual smartphone kitchen-photo feel with slight handheld perspective, practical framing, natural side window light, and realistic texture detail. Avoid polished magazine styling and perfect symmetry.";
   const parts: string[] = [];
   const referenceLine = referenceImageUrl
-    ? `Reference image: match dish identity and plating cues from ${referenceImageUrl}; do not copy text or logo marks.`
+    ? "If your image tool supports reference images, attach the featured image as a separate image input (not as text URL)."
     : "";
 
   if (type === "recipe") {
@@ -935,7 +1133,8 @@ function coerceGenerated(
   recipeImageFocus: RecipeImageFocus,
   cameraAngleMode: CameraAngleMode,
   recipeStyleMode: RecipeStyleMode,
-  referenceImageUrl?: string
+  referenceImageUrl?: string,
+  linkData?: LinkExtract
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -966,7 +1165,8 @@ function coerceGenerated(
             const openAIPrompt = buildIngredientStripRecipePrompt(
               title,
               "portrait 4:5 (1080x1350)",
-              referenceImageUrl
+              referenceImageUrl,
+              linkData
             );
             return {
               name: "ingredient_strip_recipe_prompt",
@@ -980,7 +1180,8 @@ function coerceGenerated(
                 title,
                 cameraAngleMode,
                 recipeStyleMode,
-                referenceImageUrl
+                referenceImageUrl,
+                linkData
               )
             };
           })()
@@ -1001,7 +1202,8 @@ function coerceGenerated(
               title,
               cameraAngleMode,
               recipeStyleMode,
-              referenceImageUrl
+              referenceImageUrl,
+              linkData
             );
             return {
               name: p.name,
@@ -1015,7 +1217,8 @@ function coerceGenerated(
                 title,
                 cameraAngleMode,
                 recipeStyleMode,
-                referenceImageUrl
+                referenceImageUrl,
+                linkData
               )
             };
           });
@@ -1148,6 +1351,151 @@ async function callOpenAI(system: string, user: string): Promise<unknown> {
   throw new Error(lastError);
 }
 
+function pickPrimaryPrompt(generated: GeneratedShape): { name: string; text: string } | null {
+  const prompts = Array.isArray(generated.image_prompts) ? generated.image_prompts : [];
+  if (!prompts.length) return null;
+
+  const preferred =
+    prompts.find((p) => (p.name || "").toLowerCase().includes("ingredient_strip")) ||
+    prompts.find((p) => (p.name || "").toLowerCase().includes("text_overlay")) ||
+    prompts[0];
+
+  const text = preferred.openai_prompt || preferred.prompt || "";
+  if (!text.trim()) return null;
+  return { name: preferred.name || "image_prompt", text: text.trim() };
+}
+
+function imageSizeCandidates(ratio: AspectRatio): string[] {
+  if (ratio === "2:3") return ["1024x1536", "1024x1024"];
+  return ["1024x1536", "1024x1024"];
+}
+
+async function parseOpenAIImageResponse(res: Response): Promise<{ dataUrl?: string; remoteUrl?: string; error?: string }> {
+  const text = await res.text();
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    return { error: `OpenAI image API returned non-JSON response: ${text.slice(0, 300)}` };
+  }
+
+  if (!res.ok) {
+    return { error: `OpenAI image error (${res.status}): ${JSON.stringify(payload)}` };
+  }
+
+  const data = (payload as { data?: Array<{ b64_json?: string; url?: string }> }).data;
+  const first = data?.[0];
+  if (!first) return { error: "OpenAI image API returned empty data" };
+
+  if (first.b64_json) {
+    return { dataUrl: `data:image/png;base64,${first.b64_json}` };
+  }
+  if (first.url) {
+    return { remoteUrl: first.url };
+  }
+  return { error: "OpenAI image API returned no b64_json or url" };
+}
+
+async function generateOpenAIImage(params: {
+  apiKey: string;
+  type: InputType;
+  ratio: AspectRatio;
+  promptName: string;
+  promptText: string;
+  featuredImageUrl?: string;
+}): Promise<GeneratedImage> {
+  const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
+  const sizes = imageSizeCandidates(params.ratio);
+  const useReference = params.type === "recipe" && !!params.featuredImageUrl;
+
+  let referenceBlob: Blob | null = null;
+  if (useReference && params.featuredImageUrl) {
+    try {
+      const refRes = await fetch(params.featuredImageUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; PromptGeneratorBot/1.0)"
+        }
+      });
+      if (refRes.ok) {
+        const contentType = refRes.headers.get("content-type") || "image/jpeg";
+        const bytes = await refRes.arrayBuffer();
+        referenceBlob = new Blob([bytes], { type: contentType });
+      }
+    } catch {
+      referenceBlob = null;
+    }
+  }
+
+  let lastError = "Unknown image generation error";
+  for (const size of sizes) {
+    if (referenceBlob) {
+      const form = new FormData();
+      form.append("model", model);
+      form.append("prompt", params.promptText);
+      form.append("size", size);
+      form.append("image", referenceBlob, "reference-image.jpg");
+
+      const res = await fetch("https://api.openai.com/v1/images/edits", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${params.apiKey}`
+        },
+        body: form
+      });
+
+      const parsed = await parseOpenAIImageResponse(res);
+      if (!parsed.error) {
+        return {
+          prompt_name: params.promptName,
+          model,
+          used_reference_image: true,
+          data_url: parsed.dataUrl || null,
+          remote_url: parsed.remoteUrl || null,
+          error: null
+        };
+      }
+      lastError = parsed.error;
+      continue;
+    }
+
+    const res = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        prompt: params.promptText,
+        size,
+        response_format: "b64_json"
+      })
+    });
+    const parsed = await parseOpenAIImageResponse(res);
+    if (!parsed.error) {
+      return {
+        prompt_name: params.promptName,
+        model,
+        used_reference_image: false,
+        data_url: parsed.dataUrl || null,
+        remote_url: parsed.remoteUrl || null,
+        error: null
+      };
+    }
+    lastError = parsed.error;
+  }
+
+  return {
+    prompt_name: params.promptName,
+    model,
+    used_reference_image: !!referenceBlob,
+    data_url: null,
+    remote_url: null,
+    error: lastError
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as GeneratePayload;
@@ -1189,8 +1537,23 @@ export async function POST(req: NextRequest) {
       recipeImageFocus,
       cameraAngleMode,
       recipeStyleMode,
-      type === "recipe" ? linkData?.featuredImageUrl : undefined
+      type === "recipe" ? linkData?.featuredImageUrl : undefined,
+      linkData
     );
+    const apiKey = process.env.OPENAI_API_KEY;
+    const primaryPrompt = pickPrimaryPrompt(generated);
+    let generatedImage: GeneratedImage | null = null;
+
+    if (apiKey && primaryPrompt) {
+      generatedImage = await generateOpenAIImage({
+        apiKey,
+        type,
+        ratio,
+        promptName: primaryPrompt.name,
+        promptText: primaryPrompt.text,
+        featuredImageUrl: type === "recipe" ? linkData?.featuredImageUrl : undefined
+      });
+    }
 
     return NextResponse.json(
       {
@@ -1204,7 +1567,8 @@ export async function POST(req: NextRequest) {
           recipeStyleMode: type === "recipe" ? recipeStyleMode : null,
           featuredImageUrl: type === "recipe" ? (linkData?.featuredImageUrl || null) : null
         },
-        generated
+        generated,
+        generated_image: generatedImage
       },
       { status: 200 }
     );

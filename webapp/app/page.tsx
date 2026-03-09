@@ -34,6 +34,14 @@ type ApiSuccess = {
     caption_only_options?: string[];
     notes?: string;
   };
+  generated_image?: {
+    prompt_name: string;
+    model: string;
+    used_reference_image: boolean;
+    data_url?: string | null;
+    remote_url?: string | null;
+    error?: string | null;
+  } | null;
 };
 
 export default function HomePage() {
@@ -253,43 +261,45 @@ export default function HomePage() {
                 ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}`
                 : ""})
             </h2>
+            {result.generated_image ? (
+              <div className="block">
+                <h3>Generated Image (OpenAI)</h3>
+                {result.generated_image.error ? (
+                  <p className="subhead error-inline">{result.generated_image.error}</p>
+                ) : null}
+                {result.generated_image.data_url || result.generated_image.remote_url ? (
+                  <div className="generated-image-wrap">
+                    <img
+                      src={result.generated_image.data_url || result.generated_image.remote_url || ""}
+                      alt="Generated recipe/article visual"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">
                 <h3>{p.name}</h3>
-                <div className="prompt-columns">
-                  <div className="copy-item">
-                    <div className="copy-label">OpenAI Prompt</div>
-                    <button
-                      className="copy-btn"
-                      type="button"
-                      onClick={() => copyText(`prompt-openai-${idx}`, p.openai_prompt || p.prompt || "")}
-                      title="Copy OpenAI prompt"
-                      aria-label={`Copy OpenAI prompt for ${p.name}`}
-                    >
-                      {copiedKey === `prompt-openai-${idx}` ? "Copied" : "📋 Copy"}
-                    </button>
-                    <pre className="copy-text">{p.openai_prompt || p.prompt || ""}</pre>
-                  </div>
-                  <div className="copy-item">
-                    <div className="copy-label">Nanobanana v2 Prompt</div>
-                    <button
-                      className="copy-btn"
-                      type="button"
-                      onClick={() =>
-                        copyText(
-                          `prompt-nanobanana-${idx}`,
-                          p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""
-                        )
-                      }
-                      title="Copy Nanobanana v2 prompt"
-                      aria-label={`Copy Nanobanana v2 prompt for ${p.name}`}
-                    >
-                      {copiedKey === `prompt-nanobanana-${idx}` ? "Copied" : "📋 Copy"}
-                    </button>
-                    <pre className="copy-text">
-                      {p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""}
-                    </pre>
-                  </div>
+                <div className="copy-item">
+                  <div className="copy-label">Nanobanana v2 Prompt (Optional export)</div>
+                  <button
+                    className="copy-btn"
+                    type="button"
+                    onClick={() =>
+                      copyText(
+                        `prompt-nanobanana-${idx}`,
+                        p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""
+                      )
+                    }
+                    title="Copy Nanobanana v2 prompt"
+                    aria-label={`Copy Nanobanana v2 prompt for ${p.name}`}
+                  >
+                    {copiedKey === `prompt-nanobanana-${idx}` ? "Copied" : "📋 Copy"}
+                  </button>
+                  <pre className="copy-text">
+                    {p.nanobanana_v2_prompt || p.openai_prompt || p.prompt || ""}
+                  </pre>
                 </div>
               </div>
             ))}
