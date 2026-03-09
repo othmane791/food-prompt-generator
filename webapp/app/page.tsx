@@ -17,6 +17,7 @@ type ApiSuccess = {
     recipeImageFocus?: RecipeImageFocus | null;
     cameraAngleMode?: CameraAngleMode | null;
     recipeStyleMode?: RecipeStyleMode | null;
+    generateImage?: boolean;
     featuredImageUrl?: string | null;
   };
   generated: {
@@ -53,6 +54,7 @@ export default function HomePage() {
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
   const [cameraAngleMode, setCameraAngleMode] = useState<CameraAngleMode>("regular_40_55");
   const [recipeStyleMode, setRecipeStyleMode] = useState<RecipeStyleMode>("action_prep");
+  const [generateImage, setGenerateImage] = useState(true);
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,7 +89,8 @@ export default function HomePage() {
           aspectRatio,
           recipeImageFocus,
           cameraAngleMode,
-          recipeStyleMode
+          recipeStyleMode,
+          generateImage
         })
       });
 
@@ -236,6 +239,15 @@ export default function HomePage() {
             <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." />
           </label>
 
+          <label className="toggle-row" aria-label="Generate image">
+            <span>Generate image (API cost)</span>
+            <input
+              type="checkbox"
+              checked={generateImage}
+              onChange={(e) => setGenerateImage(e.target.checked)}
+            />
+          </label>
+
           <button type="submit" disabled={!canSubmit || loading}>
             {loading ? "Generating..." : "Generate"}
           </button>
@@ -276,6 +288,11 @@ export default function HomePage() {
                     />
                   </div>
                 ) : null}
+              </div>
+            ) : result.input.generateImage === false ? (
+              <div className="block">
+                <h3>Generated Image (OpenAI)</h3>
+                <p className="subhead">Image generation is OFF. Prompts and captions generated only.</p>
               </div>
             ) : null}
             {(result.generated.image_prompts || []).map((p, idx) => (

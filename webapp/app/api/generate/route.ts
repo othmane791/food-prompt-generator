@@ -15,6 +15,7 @@ type GeneratePayload = {
   recipeImageFocus?: RecipeImageFocus;
   cameraAngleMode?: CameraAngleMode;
   recipeStyleMode?: RecipeStyleMode;
+  generateImage?: boolean;
 };
 
 type LinkExtract = {
@@ -70,6 +71,10 @@ function normalizeRecipeStyleMode(value?: string): RecipeStyleMode {
   return value === "ingredient_strip_recipe" || value === "viral_recipe_infographic"
     ? "ingredient_strip_recipe"
     : "action_prep";
+}
+
+function normalizeGenerateImage(value?: boolean): boolean {
+  return value !== false;
 }
 
 function aspectLabel(ratio: AspectRatio): string {
@@ -1504,6 +1509,7 @@ export async function POST(req: NextRequest) {
     const recipeImageFocus = normalizeRecipeImageFocus(body.recipeImageFocus);
     const cameraAngleMode = normalizeCameraAngleMode(body.cameraAngleMode);
     const recipeStyleMode = normalizeRecipeStyleMode(body.recipeStyleMode);
+    const generateImage = normalizeGenerateImage(body.generateImage);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -1544,7 +1550,7 @@ export async function POST(req: NextRequest) {
     const primaryPrompt = pickPrimaryPrompt(generated);
     let generatedImage: GeneratedImage | null = null;
 
-    if (apiKey && primaryPrompt) {
+    if (generateImage && apiKey && primaryPrompt) {
       generatedImage = await generateOpenAIImage({
         apiKey,
         type,
@@ -1565,6 +1571,7 @@ export async function POST(req: NextRequest) {
           recipeImageFocus: type === "recipe" ? recipeImageFocus : null,
           cameraAngleMode: type === "recipe" ? cameraAngleMode : null,
           recipeStyleMode: type === "recipe" ? recipeStyleMode : null,
+          generateImage,
           featuredImageUrl: type === "recipe" ? (linkData?.featuredImageUrl || null) : null
         },
         generated,
