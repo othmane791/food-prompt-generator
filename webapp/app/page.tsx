@@ -253,24 +253,6 @@ export default function HomePage() {
                 ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}`
                 : ""})
             </h2>
-            {result.input.type === "recipe" && result.input.featuredImageUrl ? (
-              <div className="copy-item">
-                <div className="copy-label">Featured Image Reference (from link)</div>
-                <button
-                  className="copy-btn"
-                  type="button"
-                  onClick={() => copyText("featured-image-url", result.input.featuredImageUrl || "")}
-                  title="Copy featured image URL"
-                  aria-label="Copy featured image URL"
-                >
-                  {copiedKey === "featured-image-url" ? "Copied" : "📋 Copy"}
-                </button>
-                <pre className="copy-text">{result.input.featuredImageUrl}</pre>
-                <div className="featured-image-preview">
-                  <img src={result.input.featuredImageUrl} alt="Featured reference" loading="lazy" />
-                </div>
-              </div>
-            ) : null}
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">
                 <h3>{p.name}</h3>
