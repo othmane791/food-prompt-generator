@@ -6,7 +6,7 @@ type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 type CameraAngleMode = "regular_40_55" | "above";
-type RecipeStyleMode = "action_prep" | "ingredient_strip_recipe";
+type RecipeStyleMode = "action_prep";
 
 type ApiSuccess = {
   input: {
@@ -44,7 +44,7 @@ export default function HomePage() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
   const [cameraAngleMode, setCameraAngleMode] = useState<CameraAngleMode>("regular_40_55");
-  const [recipeStyleMode, setRecipeStyleMode] = useState<RecipeStyleMode>("action_prep");
+  const recipeStyleMode: RecipeStyleMode = "action_prep";
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -110,10 +110,6 @@ export default function HomePage() {
     return mode === "above" ? "Above shot" : "Regular shot 40°-55°";
   }
 
-  function recipeStyleLabel(mode?: RecipeStyleMode | null) {
-    return mode === "ingredient_strip_recipe" ? "Ingredient strip recipe" : "Action / prep shot";
-  }
-
   return (
     <main className="page">
       <section className="hero">
@@ -133,37 +129,13 @@ export default function HomePage() {
 
           <label>
             Aspect Ratio
-            <select
-              value={aspectRatio}
-              onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
-              disabled={type === "recipe" && recipeStyleMode === "ingredient_strip_recipe"}
-            >
+            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}>
               <option value="2:3">2:3 (1080x1620)</option>
               <option value="4:5">4:5 (1080x1350)</option>
             </select>
           </label>
 
           {type === "recipe" ? (
-            <label>
-              Recipe Image Style
-              <select
-                value={recipeStyleMode}
-                onChange={(e) => {
-                  const next = e.target.value as RecipeStyleMode;
-                  setRecipeStyleMode(next);
-                  if (next === "ingredient_strip_recipe") {
-                    setAspectRatio("4:5");
-                    setCameraAngleMode("regular_40_55");
-                  }
-                }}
-              >
-                <option value="action_prep">Action / Prep Shot</option>
-                <option value="ingredient_strip_recipe">Ingredient Strip Recipe</option>
-              </select>
-            </label>
-          ) : null}
-
-          {type === "recipe" && recipeStyleMode === "action_prep" ? (
             <label>
               Recipe Image Focus
               <select
@@ -176,13 +148,7 @@ export default function HomePage() {
             </label>
           ) : null}
 
-          {type === "recipe" && recipeStyleMode === "ingredient_strip_recipe" ? (
-            <p className="subhead">
-              Ingredient strip mode uses a clean two-section layout with title + ingredient strip above the hero dish.
-            </p>
-          ) : null}
-
-          {type === "recipe" && recipeStyleMode === "action_prep" ? (
+          {type === "recipe" ? (
             <fieldset className="camera-angle-fieldset">
               <legend>Camera Angle</legend>
               <div className="camera-angle-options">
@@ -245,11 +211,10 @@ export default function HomePage() {
           <article className="panel span-2">
             <h2>
               Image Prompts ({result.input.aspectRatio || "4:5"}
-              {result.input.recipeStyleMode ? `, ${recipeStyleLabel(result.input.recipeStyleMode)}` : ""}
-              {result.input.recipeStyleMode !== "ingredient_strip_recipe" && result.input.recipeImageFocus
+              {result.input.recipeImageFocus
                 ? `, ${result.input.recipeImageFocus}`
                 : ""}
-              {result.input.recipeStyleMode !== "ingredient_strip_recipe" && result.input.cameraAngleMode
+              {result.input.cameraAngleMode
                 ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}`
                 : ""})
             </h2>

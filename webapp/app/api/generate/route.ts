@@ -5,7 +5,7 @@ type InputType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 type CameraAngleMode = "regular_40_55" | "above";
-type RecipeStyleMode = "action_prep" | "ingredient_strip_recipe";
+type RecipeStyleMode = "action_prep";
 
 type GeneratePayload = {
   type?: InputType;
@@ -57,9 +57,7 @@ function normalizeCameraAngleMode(value?: string): CameraAngleMode {
 }
 
 function normalizeRecipeStyleMode(value?: string): RecipeStyleMode {
-  return value === "ingredient_strip_recipe" || value === "viral_recipe_infographic"
-    ? "ingredient_strip_recipe"
-    : "action_prep";
+  return "action_prep";
 }
 
 function aspectLabel(ratio: AspectRatio): string {
@@ -171,20 +169,12 @@ function buildUserPrompt(input: {
       },
       recipe_image_strategy: {
         style_mode: input.recipeStyleMode,
-        framing:
-          input.recipeStyleMode === "ingredient_strip_recipe"
-            ? "clean two-section composition with top ingredient strip and bottom hero dish, mobile-first readability"
-            : "close or medium-close composition, tight crop so food fills most of frame",
+        framing: "close or medium-close composition, tight crop so food fills most of frame",
         camera_angle:
-          input.recipeStyleMode === "ingredient_strip_recipe"
-            ? "slightly above 30-45 degree angle on hero dish, not overhead"
-            : input.cameraAngleMode === "above"
-              ? "above shot, top-down smartphone angle from above the food"
-              : "regular casual smartphone angle around 40-55 degrees above food with slight handheld feel",
-        cooking_moment:
-          input.recipeStyleMode === "ingredient_strip_recipe"
-            ? "show finished dish hero, no in-progress action"
-            : "always in-progress action, never finished plated dish",
+          input.cameraAngleMode === "above"
+            ? "above shot, top-down smartphone angle from above the food"
+            : "regular casual smartphone angle around 40-55 degrees above food with slight handheld feel",
+        cooking_moment: "always in-progress action, never finished plated dish",
         action_pool: [
           "pouring sauce",
           "sprinkling seasoning",
@@ -769,8 +759,7 @@ function enforceVisualProfile(
   ratioText: string,
   _recipeImageFocus: RecipeImageFocus,
   title: string,
-  cameraAngleMode: CameraAngleMode,
-  recipeStyleMode: RecipeStyleMode
+  cameraAngleMode: CameraAngleMode
 ): string {
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
@@ -779,9 +768,6 @@ function enforceVisualProfile(
     .replace(/\bdark translucent box\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (type === "recipe" && recipeStyleMode === "ingredient_strip_recipe") {
-    return buildIngredientStripRecipePrompt(title, ratioText);
-  }
   const overlaySentence = recipeOverlaySentence(title);
   const actionMoment = recipeActionMoment(title, name);
   const handInteraction = recipeHandInteraction(title, name);
@@ -854,12 +840,8 @@ function buildNanobananaPrompt(
   type: InputType,
   _recipeImageFocus: RecipeImageFocus,
   title: string,
-  cameraAngleMode: CameraAngleMode,
-  recipeStyleMode: RecipeStyleMode
+  cameraAngleMode: CameraAngleMode
 ): string {
-  if (type === "recipe" && recipeStyleMode === "ingredient_strip_recipe") {
-    return buildIngredientStripRecipePrompt(title, "portrait 4:5 (1080x1350)");
-  }
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
   const actionMoment = recipeActionMoment(title, name);
@@ -925,8 +907,7 @@ function coerceGenerated(
   title: string,
   ratio: AspectRatio,
   recipeImageFocus: RecipeImageFocus,
-  cameraAngleMode: CameraAngleMode,
-  recipeStyleMode: RecipeStyleMode
+  cameraAngleMode: CameraAngleMode
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -950,62 +931,36 @@ function coerceGenerated(
           }
         ];
 
-  const namedPrompts =
-    type === "recipe" && recipeStyleMode === "ingredient_strip_recipe"
-      ? [
-          (() => {
-            const openAIPrompt = buildIngredientStripRecipePrompt(
-              title,
-              "portrait 4:5 (1080x1350)"
-            );
-            return {
-              name: "ingredient_strip_recipe_prompt",
-              prompt: openAIPrompt,
-              openai_prompt: openAIPrompt,
-              nanobanana_v2_prompt: buildNanobananaPrompt(
-                openAIPrompt,
-                "ingredient_strip_recipe_prompt",
-                type,
-                recipeImageFocus,
-                title,
-                cameraAngleMode,
-                recipeStyleMode
-              )
-            };
-          })()
-        ]
-      : prompts
-          .map((p, idx) => ({
-            name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
-            prompt: (p.prompt || p.openai_prompt || "").trim()
-          }))
-          .filter((p) => p.prompt)
-          .map((p) => {
-            const openAIPrompt = enforceVisualProfile(
-              p.prompt,
-              p.name,
-              type,
-              ratioText,
-              recipeImageFocus,
-              title,
-              cameraAngleMode,
-              recipeStyleMode
-            );
-            return {
-              name: p.name,
-              prompt: openAIPrompt,
-              openai_prompt: openAIPrompt,
-              nanobanana_v2_prompt: buildNanobananaPrompt(
-                openAIPrompt,
-                p.name,
-                type,
-                recipeImageFocus,
-                title,
-                cameraAngleMode,
-                recipeStyleMode
-              )
-            };
-          });
+  const namedPrompts = prompts
+    .map((p, idx) => ({
+      name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
+      prompt: (p.prompt || p.openai_prompt || "").trim()
+    }))
+    .filter((p) => p.prompt)
+    .map((p) => {
+      const openAIPrompt = enforceVisualProfile(
+        p.prompt,
+        p.name,
+        type,
+        ratioText,
+        recipeImageFocus,
+        title,
+        cameraAngleMode
+      );
+      return {
+        name: p.name,
+        prompt: openAIPrompt,
+        openai_prompt: openAIPrompt,
+        nanobanana_v2_prompt: buildNanobananaPrompt(
+          openAIPrompt,
+          p.name,
+          type,
+          recipeImageFocus,
+          title,
+          cameraAngleMode
+        )
+      };
+    });
 
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 5) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
@@ -1174,8 +1129,7 @@ export async function POST(req: NextRequest) {
       resolvedTitle,
       ratio,
       recipeImageFocus,
-      cameraAngleMode,
-      recipeStyleMode
+      cameraAngleMode
     );
 
     return NextResponse.json(

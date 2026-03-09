@@ -17,9 +17,7 @@ Hard rules:
      * "regular_40_55": around 40-55 degrees above the food
      * "above": above shot / top-down smartphone view from above
    - close or medium-close composition with tight crop so food dominates frame
-   - recipe style must follow input "recipe_style_mode":
-     * "action_prep": in-progress cooking action, never finished plated dish
-     * "ingredient_strip_recipe": clean two-section image with top ingredient strip and bottom hero dish
+   - recipe style mode is action-prep only: in-progress cooking action, never finished plated dish
    - action examples for action_prep mode: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan
    - realistic food textures: irregular browning, bubbling sauce/oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, natural imperfections
    - warm natural side window light with soft shadows and uneven highlights (not studio)
@@ -44,8 +42,7 @@ Hard rules:
    - article: bold light sans-serif on dark translucent box, centered/upper-middle, 1-2 lines
    - no logos/watermarks
 12) For recipe posts:
-   - action_prep mode: prioritize active prep/cooking moment and texture detail.
-   - ingredient_strip_recipe mode: prioritize mobile-readable title + ingredient strip + finished-dish hero.
+   - prioritize active prep/cooking moment and texture detail.
 13) Visual profile constraints from historical analysis:
    - recipe: mostly photo-first, warm tones, practical close framing, kitchen realism, low text-overlay usage.
    - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
@@ -95,16 +92,6 @@ Hard rules:
    - smartphone depth-of-field behavior
    - overlay headline instruction (for text_overlay_prompt only)
    - realism/staging constraints
-21) For "ingredient_strip_recipe" mode, generate one clean prompt that includes:
-   - portrait 4:5, medium-close, slightly top-down ~30-45-degree view (not overhead)
-   - clean top-center title in simple bold sans-serif text
-   - horizontal ingredient strip below title with 4-6 isolated ingredients on white background
-   - small readable ingredient labels under each ingredient (short labels only)
-   - bottom 60-70% hero shot of finished dish, rich texture, vibrant color, realistic homemade look
-   - subtle contextual background props, softly blurred, minimal clutter
-   - bright natural kitchen light, soft highlights, shallow depth of field
-   - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, studio/editorial look
-
 Output must be valid JSON only (no markdown), with this shape:
 {
   "resolved_type": "recipe|article",
