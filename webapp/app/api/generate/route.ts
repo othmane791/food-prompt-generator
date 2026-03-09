@@ -488,33 +488,72 @@ function stemKey(text: string): string {
     .join(" ");
 }
 
+function recipeTitleMention(title: string, seed: number): string {
+  const clean = normalizeCaptionBody(title);
+  if (!clean) return "this dish";
+  const low = clean.toLowerCase();
+  const options = [clean, "this dish", "this one", "this recipe", "it"];
+  if (/^the\s+/.test(low)) return pickSeeded(options.slice(1), seed + 3);
+  return pickSeeded(options, seed + 1);
+}
+
 function buildRecipeViralAngle(index: number, title: string, variant = 0): string {
   const seed = titleSeed(`${title}:${index}:${variant}`);
-  const ingredient = recipeMainIngredient(title);
-  const ingredientText = ingredient === "dinner" ? "this dish" : ingredient;
   const count = ingredientCountPhrase(title);
-  const action = inferRecipeAction(title).toLowerCase();
+  const action = inferRecipeAction(title);
+  const titleRef = recipeTitleMention(title, seed);
   const social = pickSeeded(SOCIAL_TOKEN_POOL, seed + 21);
   const reaction = pickSeeded(REACTION_TOKEN_POOL, seed + 23);
+  const shock = pickSeeded(SHOCK_ANGLE_TOKENS, seed + 1);
+  const doubt = pickSeeded(FAMILY_FLIP_TOKENS, seed + 3);
+  const party = pickSeeded(PARTY_PROOF_TOKENS, seed + 7);
+  const nostalgia = pickSeeded(NOSTALGIA_TOKENS, seed + 11);
+  const ease = pickSeeded(EASE_BRAG_TOKENS, seed + 15);
+  const opener = pickSeeded(DIVERSE_OPENER_POOL, seed + 27);
 
   if (index === 0) {
-    const shock = pickSeeded(SHOCK_ANGLE_TOKENS, seed + 1);
-    return `${shock}, one bite and ${social}; ${action} ${count} over ${ingredientText} and it disappeared fast`;
+    const templates = [
+      `${shock}, I set out ${titleRef} and ${social} before I could even sit down`,
+      `${opener}: ${titleRef} hit the table and ${reaction}, then ${social}`,
+      `${shock}, ${titleRef} was gone fast and ${social} right away`,
+      `${reaction}; ${titleRef} barely cooled before ${social}`
+    ];
+    return pickSeeded(templates, seed + 31);
   }
   if (index === 1) {
-    const doubt = pickSeeded(FAMILY_FLIP_TOKENS, seed + 3);
-    return `${doubt}, then asked for seconds and told me to save this recipe, ${social}`;
+    const templates = [
+      `${doubt}, then asked for seconds and admitted ${titleRef} was a keeper`,
+      `${doubt}, but after one bite ${social} and the doubt vanished`,
+      `${doubt}, then went back twice for ${titleRef} and asked me to make it again`,
+      `${doubt}, and now ${titleRef} is on repeat at my house`
+    ];
+    return pickSeeded(templates, seed + 37);
   }
   if (index === 2) {
-    const party = pickSeeded(PARTY_PROOF_TOKENS, seed + 7);
-    return `I ${party} and it was gone first; ${social} before I even sat down`;
+    const templates = [
+      `I ${party} and ${titleRef} was gone first with ${social}`,
+      `Party test passed: ${titleRef} disappeared fast and ${social}`,
+      `I brought ${titleRef} for guests and ${social} before the tray was half empty`,
+      `${titleRef} at a gathering was a lock; ${social} and I left with no leftovers`
+    ];
+    return pickSeeded(templates, seed + 41);
   }
   if (index === 3) {
-    const nostalgia = pickSeeded(NOSTALGIA_TOKENS, seed + 11);
-    return `${nostalgia}, and ${reaction} hit as soon as dinner reached the table`;
+    const templates = [
+      `${nostalgia}, and ${reaction} hit the second ${titleRef} reached the table`,
+      `${titleRef} has that old-school comfort vibe; ${nostalgia} in the best way`,
+      `${nostalgia}, but easier, and ${social}`,
+      `First bite of ${titleRef} felt familiar, like home, and ${reaction}`
+    ];
+    return pickSeeded(templates, seed + 43);
   }
-  const ease = pickSeeded(EASE_BRAG_TOKENS, seed + 15);
-  return `${count}, ${ease}, and still unbelievably good; ${reaction} with almost zero effort`;
+  const templates = [
+    `${count}, ${ease}, and ${titleRef} still tasted unbelievably good`,
+    `${action} and go: ${count}, ${ease}, and ${social}`,
+    `${ease}, barely any prep, and ${reaction} from the first bite`,
+    `${count}, almost no effort, and ${titleRef} came out better than expected`
+  ];
+  return pickSeeded(templates, seed + 47);
 }
 
 function lineMatchesAngle(line: string, index: number): boolean {
@@ -540,6 +579,11 @@ function enrichCaptionBody(body: string, type: InputType, index: number, title: 
     }
   }
 
+  if (type === "recipe") {
+    const minWords = 14;
+    const maxWords = 25;
+    return clampWordRange(line, minWords, maxWords, ["at my house", "this week"]);
+  }
   return clampWordRange(line, 18, 28, ["for dinner tonight", "at my house", "this week"]);
 }
 
@@ -551,27 +595,14 @@ function postProcessCaptionBodies(bodies: string[], type: InputType, title: stri
   const available = bodies.map((body) => normalizeCaptionBody(body));
 
   if (type === "recipe") {
-    const usedIndices = new Set<number>();
     for (let angle = 0; angle < 5; angle++) {
-      let picked = "";
-      let pickedIndex = -1;
-      for (let i = 0; i < available.length; i++) {
-        if (usedIndices.has(i)) continue;
-        const candidate = available[i];
-        if (!candidate) continue;
-        if (lineMatchesAngle(candidate, angle)) {
-          picked = candidate;
-          pickedIndex = i;
-          break;
-        }
-      }
-      if (pickedIndex >= 0) usedIndices.add(pickedIndex);
-      let line = picked || buildRecipeViralAngle(angle, title, angle + 1);
+      const variantSeed = angle + 1 + (titleSeed(title) % 97);
+      let line = buildRecipeViralAngle(angle, title, variantSeed);
       line = enrichCaptionBody(line, type, angle, title);
       const key = normalizeCaptionBody(line).toLowerCase();
       const sKey = stemKey(line);
       if (seenExact.has(key) || seenStem.has(sKey)) {
-        line = enrichCaptionBody(buildRecipeViralAngle(angle, title, angle + 31), type, angle + 31, title);
+        line = enrichCaptionBody(buildRecipeViralAngle(angle, title, variantSeed + 31), type, angle + 31, title);
       }
       const finalKey = normalizeCaptionBody(line).toLowerCase();
       const finalStem = stemKey(line);
@@ -647,7 +678,11 @@ function normalizeCaption(caption: string, type: InputType, index = 0, title = "
       ? canonicalRecipeCta(secondLineRaw, index, title)
       : canonicalArticleCta(secondLineRaw);
 
-  firstLine = clampWordRange(firstLine, 18, 28, ["for dinner", "this week", "at my house"]);
+  if (type === "recipe") {
+    firstLine = clampWordRange(firstLine, 14, 25, ["at my house", "this week"]);
+  } else {
+    firstLine = clampWordRange(firstLine, 18, 28, ["for dinner", "this week", "at my house"]);
+  }
   firstLine = firstLine.replace(/[.。]\s*$/, "");
 
   return `${firstLine}.\n${cta}`;
