@@ -870,24 +870,24 @@ function ingredientStripDefaultIngredients(category: RecipeCategory): string[] {
     return ["chicken", "cream sauce", "cheese", "onion", "garlic", "seasoning"];
   }
   if (category === "soup") {
-    return ["broth", "protein", "onion", "celery", "carrot", "herbs"];
+    return ["beef broth", "onion", "celery", "carrot", "garlic", "thyme"];
   }
   if (category === "dessert") {
     return ["flour", "sugar", "butter", "eggs", "vanilla", "milk"];
   }
   if (category === "skillet") {
-    return ["protein", "onion", "garlic", "oil", "vegetables", "seasoning"];
+    return ["beef", "onion", "garlic", "oil", "bell pepper", "seasoning blend"];
   }
   if (category === "slow_cooker") {
-    return ["protein", "sauce base", "onion", "garlic", "seasoning", "creamy add-in"];
+    return ["beef roast", "onion", "beef broth", "garlic", "onion soup mix", "thyme"];
   }
   if (category === "bread") {
     return ["flour", "yeast", "butter", "milk", "sugar", "salt"];
   }
   if (category === "pasta") {
-    return ["pasta", "sauce", "protein", "onion", "cheese", "herbs"];
+    return ["pasta", "tomato sauce", "ground beef", "onion", "parmesan", "basil"];
   }
-  return ["main ingredient", "oil or butter", "onion", "garlic", "seasoning", "herbs"];
+  return ["chicken", "onion", "garlic", "olive oil", "salt & pepper", "fresh herbs"];
 }
 
 function ingredientStripIngredients(category: RecipeCategory, title: string, linkData?: LinkExtract): string[] {
@@ -900,6 +900,9 @@ function ingredientStripIngredients(category: RecipeCategory, title: string, lin
   const source = `${title} ${linkData?.description || ""} ${linkData?.bodySnippet || ""}`.toLowerCase();
   const inferred: string[] = [];
   const inferRules: Array<[RegExp, string]> = [
+    [/\bfrench onion\b/, "onion soup mix"],
+    [/\bpot roast\b|\broast\b/, "beef roast"],
+    [/\bbeef broth\b|\bbroth\b/, "beef broth"],
     [/\bstrawberr(y|ies)\b/, "strawberries"],
     [/\bpineapple\b/, "pineapple"],
     [/\bmini\s+marshmallows?\b|\bmarshmallows?\b/, "mini marshmallows"],
@@ -938,6 +941,27 @@ function ingredientStripIngredients(category: RecipeCategory, title: string, lin
   return merged.slice(0, 6);
 }
 
+function ingredientStripDisplayTitle(title: string): string {
+  const original = normalizeCaptionBody(title);
+  if (!original) return "Recipe";
+  let t = original
+    .replace(/\b(slow cooker|crock pot|crockpot|easy|quick|best|favorite|recipe)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) t = original;
+
+  const maxChars = 32;
+  if (t.length <= maxChars) return t;
+  const words = t.split(/\s+/);
+  let compact = "";
+  for (const w of words) {
+    const next = `${compact} ${w}`.trim();
+    if (next.length > maxChars) break;
+    compact = next;
+  }
+  return compact || words.slice(0, 4).join(" ");
+}
+
 function buildIngredientStripRecipePrompt(
   title: string,
   ratioText: string,
@@ -945,11 +969,10 @@ function buildIngredientStripRecipePrompt(
   linkData?: LinkExtract
 ): string {
   const category = inferRecipeCategory(title);
-  const vessel = ingredientStripVessel(category);
-  const bg = ingredientStripBackground(category);
   const ingredients = ingredientStripIngredients(category, title, linkData).slice(0, 6);
+  const displayTitle = ingredientStripDisplayTitle(title);
   return normalizePromptText(
-    `Photorealistic viral recipe image in ${ratioText}. Clean two-section layout optimized for Facebook and Pinterest mobile feeds. Top section (title + ingredient strip) must occupy about 25% of total image height only, with very small top padding and tight vertical spacing. Centered title "${title}" in bold simple sans-serif black text, no ribbon, no badge, no decorative banner. Title must stay on exactly one line; do not wrap to a second line, reduce font size as needed so full title fits in one line with safe margins. Directly below title, a horizontal ingredient strip on clean white background showing isolated ingredients evenly spaced with small labels under each: ${ingredients.join(", ")}. Labels must be short and mobile-readable and fully visible. Bottom 75% section: tight medium-close hero shot of the finished dish in ${vessel}, camera slightly above at 30-45 degrees (not overhead), food filling most of frame. Dish should look glossy, rich, textured, appetizing, realistic homemade cooking with visible sauce shine, vegetables, herbs or scallions, and natural texture variation. Bright natural kitchen light with soft highlights and gentle depth of field. Subtle contextual background props (${bg}) softly blurred, clean and not cluttered. Strong vibrant food color contrast, scroll-stopping but realistic. No infographic bullet lists, no checkmark list, no decorative ribbons, no step instructions, no logos, no watermarks, no cluttered background, no pure overhead flat lay, no studio look.`
+    `Clean ingredient-strip header template in ${ratioText}, minimalist white-background graphic layout for external composition. This is NOT a full recipe photo. Top header content (title + ingredient strip) must occupy about 25% of total image height, with very small top padding and tight vertical spacing. Use centered one-line title text exactly "${displayTitle}" in bold simple sans-serif black. Do not wrap title to two lines; reduce font size to keep it on one line with safe margins. Directly below, render a horizontal ingredient strip on clean white background with isolated ingredients and short labels: ${ingredients.join(", ")}. Keep labels fully visible and mobile-readable. IMPORTANT: The lower 75% of the image must be plain clean white empty area with no dish, no food photo, no props, no textures, no shadows, no gradients, no extra graphics (reserved for external website image composition). No badges, no ribbons, no checkmarks, no logos, no watermarks, no decorative elements.`
   );
 }
 
@@ -1417,6 +1440,7 @@ async function parseOpenAIImageResponse(res: Response): Promise<{ dataUrl?: stri
 async function generateOpenAIImage(params: {
   apiKey: string;
   type: InputType;
+  recipeStyleMode?: RecipeStyleMode;
   ratio: AspectRatio;
   promptName: string;
   promptText: string;
@@ -1424,7 +1448,10 @@ async function generateOpenAIImage(params: {
 }): Promise<GeneratedImage> {
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
   const sizes = imageSizeCandidates(params.ratio);
-  const useReference = params.type === "recipe" && !!params.featuredImageUrl;
+  const useReference =
+    params.type === "recipe" &&
+    params.recipeStyleMode !== "ingredient_strip_recipe" &&
+    !!params.featuredImageUrl;
 
   let referenceBlob: Blob | null = null;
   if (useReference && params.featuredImageUrl) {
@@ -1567,6 +1594,7 @@ export async function POST(req: NextRequest) {
       generatedImage = await generateOpenAIImage({
         apiKey,
         type,
+        recipeStyleMode,
         ratio,
         promptName: primaryPrompt.name,
         promptText: primaryPrompt.text,

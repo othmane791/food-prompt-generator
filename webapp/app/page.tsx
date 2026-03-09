@@ -206,7 +206,7 @@ export default function HomePage() {
 
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, width, height);
-      drawCover(ctx, topImage, 0, 0, width, topHeight, "top", 0.22);
+      drawCover(ctx, topImage, 0, 0, width, topHeight, "top", 0.0);
       drawCover(ctx, bottomImage, 0, topHeight, width, bottomHeight, "center");
 
       const blob = await new Promise<Blob>((resolve, reject) => {

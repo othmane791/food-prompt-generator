@@ -19,7 +19,7 @@ Hard rules:
    - close or medium-close composition with tight crop so food dominates frame
    - recipe style must follow input "recipe_style_mode":
      * "action_prep": in-progress cooking action, never finished plated dish
-     * "ingredient_strip_recipe": clean two-section image with top ingredient strip and bottom hero dish
+     * "ingredient_strip_recipe": header-only panel for composition (title + ingredient strip on top, blank lower area)
    - action examples for action_prep mode: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan
    - realistic food textures: irregular browning, bubbling sauce/oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, natural imperfections
    - warm natural side window light with soft shadows and uneven highlights (not studio)
@@ -45,7 +45,7 @@ Hard rules:
    - no logos/watermarks
 12) For recipe posts:
    - action_prep mode: prioritize active prep/cooking moment and texture detail.
-   - ingredient_strip_recipe mode: prioritize mobile-readable title + ingredient strip + finished-dish hero.
+   - ingredient_strip_recipe mode: prioritize compact mobile-readable title + ingredient strip header only.
 13) Visual profile constraints from historical analysis:
    - recipe: mostly photo-first, warm tones, practical close framing, kitchen realism, low text-overlay usage.
    - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
@@ -90,17 +90,16 @@ Hard rules:
    - overlay headline instruction (for text_overlay_prompt only)
    - realism/staging constraints
 21) For "ingredient_strip_recipe" mode, generate one clean prompt that includes:
-   - portrait 4:5, medium-close, slightly top-down ~30-45-degree view (not overhead)
+   - portrait 4:5 (1080x1350), clean white canvas
    - top area (title + ingredient strip) should be compact and occupy ~25% of total height
    - very small space above the title; avoid large blank margin at top
    - clean top-center title in simple bold sans-serif text
    - title must be exactly one line (no wrapping); reduce font size to fit if needed
    - horizontal ingredient strip below title with 4-6 isolated ingredients on white background
    - small readable ingredient labels under each ingredient (short labels only)
-   - bottom ~75% hero shot of finished dish, rich texture, vibrant color, realistic homemade look
-   - subtle contextual background props, softly blurred, minimal clutter
-   - bright natural kitchen light, soft highlights, shallow depth of field
-   - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, studio/editorial look
+   - lower ~75% must remain blank white empty area (reserved for external bottom-image composition)
+   - no dish photo, no props, no textures, no shadows, no gradients in lower area
+   - avoid checkmark lists, ribbons/badges, step instructions, logos/watermarks, decorative elements
 22) If "featured_image_reference" is provided:
    - align dish identity, serving style, and color direction with that image
    - do not copy any text, logos, or watermarks from the reference

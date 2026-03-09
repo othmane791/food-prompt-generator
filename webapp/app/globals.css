@@ -284,7 +284,7 @@ pre {
   top: 0;
   height: 25%;
   object-fit: cover;
-  object-position: center 22%;
+  object-position: center top;
   z-index: 2;
 }
 
