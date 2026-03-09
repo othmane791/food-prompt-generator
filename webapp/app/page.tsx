@@ -6,6 +6,7 @@ type PostType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 type CameraAngleMode = "regular_40_55" | "above";
+type RecipeStyleMode = "action_prep" | "viral_recipe_infographic";
 
 type ApiSuccess = {
   input: {
@@ -15,6 +16,7 @@ type ApiSuccess = {
     aspectRatio?: AspectRatio;
     recipeImageFocus?: RecipeImageFocus | null;
     cameraAngleMode?: CameraAngleMode | null;
+    recipeStyleMode?: RecipeStyleMode | null;
   };
   generated: {
     resolved_type?: string;
@@ -41,6 +43,7 @@ export default function HomePage() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>("4:5");
   const [recipeImageFocus, setRecipeImageFocus] = useState<RecipeImageFocus>("step_or_ingredient");
   const [cameraAngleMode, setCameraAngleMode] = useState<CameraAngleMode>("regular_40_55");
+  const [recipeStyleMode, setRecipeStyleMode] = useState<RecipeStyleMode>("action_prep");
   const [title, setTitle] = useState("");
   const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,7 +71,15 @@ export default function HomePage() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, title, link, aspectRatio, recipeImageFocus, cameraAngleMode })
+        body: JSON.stringify({
+          type,
+          title,
+          link,
+          aspectRatio,
+          recipeImageFocus,
+          cameraAngleMode,
+          recipeStyleMode
+        })
       });
 
       const data = await res.json();
@@ -98,6 +109,10 @@ export default function HomePage() {
     return mode === "above" ? "Above shot" : "Regular shot 40°-55°";
   }
 
+  function recipeStyleLabel(mode?: RecipeStyleMode | null) {
+    return mode === "viral_recipe_infographic" ? "Viral recipe infographic" : "Action / prep shot";
+  }
+
   return (
     <main className="page">
       <section className="hero">
@@ -117,13 +132,37 @@ export default function HomePage() {
 
           <label>
             Aspect Ratio
-            <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}>
+            <select
+              value={aspectRatio}
+              onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
+              disabled={type === "recipe" && recipeStyleMode === "viral_recipe_infographic"}
+            >
               <option value="2:3">2:3 (1080x1620)</option>
               <option value="4:5">4:5 (1080x1350)</option>
             </select>
           </label>
 
           {type === "recipe" ? (
+            <label>
+              Recipe Image Style
+              <select
+                value={recipeStyleMode}
+                onChange={(e) => {
+                  const next = e.target.value as RecipeStyleMode;
+                  setRecipeStyleMode(next);
+                  if (next === "viral_recipe_infographic") {
+                    setAspectRatio("4:5");
+                    setCameraAngleMode("regular_40_55");
+                  }
+                }}
+              >
+                <option value="action_prep">Action / Prep Shot</option>
+                <option value="viral_recipe_infographic">Viral Recipe Infographic</option>
+              </select>
+            </label>
+          ) : null}
+
+          {type === "recipe" && recipeStyleMode === "action_prep" ? (
             <label>
               Recipe Image Focus
               <select
@@ -136,7 +175,13 @@ export default function HomePage() {
             </label>
           ) : null}
 
-          {type === "recipe" ? (
+          {type === "recipe" && recipeStyleMode === "viral_recipe_infographic" ? (
+            <p className="subhead">
+              Infographic mode uses a fixed slightly top-down 45° layout with finished-dish hero and ingredient checklist.
+            </p>
+          ) : null}
+
+          {type === "recipe" && recipeStyleMode === "action_prep" ? (
             <fieldset className="camera-angle-fieldset">
               <legend>Camera Angle</legend>
               <div className="camera-angle-options">
@@ -199,8 +244,13 @@ export default function HomePage() {
           <article className="panel span-2">
             <h2>
               Image Prompts ({result.input.aspectRatio || "4:5"}
-              {result.input.recipeImageFocus ? `, ${result.input.recipeImageFocus}` : ""}
-              {result.input.cameraAngleMode ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}` : ""})
+              {result.input.recipeStyleMode ? `, ${recipeStyleLabel(result.input.recipeStyleMode)}` : ""}
+              {result.input.recipeStyleMode !== "viral_recipe_infographic" && result.input.recipeImageFocus
+                ? `, ${result.input.recipeImageFocus}`
+                : ""}
+              {result.input.recipeStyleMode !== "viral_recipe_infographic" && result.input.cameraAngleMode
+                ? `, ${cameraAngleLabel(result.input.cameraAngleMode)}`
+                : ""})
             </h2>
             {(result.generated.image_prompts || []).map((p, idx) => (
               <div key={idx} className="block">

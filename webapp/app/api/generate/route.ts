@@ -5,6 +5,7 @@ type InputType = "recipe" | "article";
 type AspectRatio = "2:3" | "4:5";
 type RecipeImageFocus = "step_or_ingredient" | "final_dish";
 type CameraAngleMode = "regular_40_55" | "above";
+type RecipeStyleMode = "action_prep" | "viral_recipe_infographic";
 
 type GeneratePayload = {
   type?: InputType;
@@ -13,6 +14,7 @@ type GeneratePayload = {
   aspectRatio?: AspectRatio;
   recipeImageFocus?: RecipeImageFocus;
   cameraAngleMode?: CameraAngleMode;
+  recipeStyleMode?: RecipeStyleMode;
 };
 
 type LinkExtract = {
@@ -51,6 +53,10 @@ function normalizeRecipeImageFocus(value?: string): RecipeImageFocus {
 
 function normalizeCameraAngleMode(value?: string): CameraAngleMode {
   return value === "above" ? "above" : "regular_40_55";
+}
+
+function normalizeRecipeStyleMode(value?: string): RecipeStyleMode {
+  return value === "viral_recipe_infographic" ? "viral_recipe_infographic" : "action_prep";
 }
 
 function aspectLabel(ratio: AspectRatio): string {
@@ -104,6 +110,7 @@ function buildUserPrompt(input: {
   aspectRatio: AspectRatio;
   recipeImageFocus: RecipeImageFocus;
   cameraAngleMode: CameraAngleMode;
+  recipeStyleMode: RecipeStyleMode;
 }): string {
   return JSON.stringify(
     {
@@ -116,6 +123,7 @@ function buildUserPrompt(input: {
       aspect_format: aspectLabel(input.aspectRatio),
       recipe_image_focus: input.recipeImageFocus,
       camera_angle_mode: input.cameraAngleMode,
+      recipe_style_mode: input.recipeStyleMode,
       caption_strategy: {
         source: "top-engagement analysis",
         first_line_target_words: "18-24 (occasionally up to 28)",
@@ -139,6 +147,7 @@ function buildUserPrompt(input: {
         max_options: 5
       },
       recipe_image_strategy: {
+        style_mode: input.recipeStyleMode,
         framing: "close or medium-close composition, tight crop so food fills most of frame",
         camera_angle:
           input.cameraAngleMode === "above"
@@ -616,6 +625,116 @@ function recipeHandInteraction(title: string, promptName: string): string | null
   return RECIPE_HAND_INTERACTIONS[seed % RECIPE_HAND_INTERACTIONS.length];
 }
 
+type RecipeCategory =
+  | "coleslaw_salad"
+  | "casserole"
+  | "soup"
+  | "dessert"
+  | "skillet"
+  | "slow_cooker"
+  | "bread"
+  | "pasta"
+  | "comfort_general";
+
+function inferRecipeCategory(title: string): RecipeCategory {
+  const t = title.toLowerCase();
+  if (/\b(coleslaw|slaw|salad)\b/.test(t)) return "coleslaw_salad";
+  if (/\b(casserole|bake|lasagna)\b/.test(t)) return "casserole";
+  if (/\b(soup|stew|chili|broth)\b/.test(t)) return "soup";
+  if (/\b(cake|cookie|brownie|dessert|pie|cobbler|frosting)\b/.test(t)) return "dessert";
+  if (/\b(skillet|pan|stir fry|fry)\b/.test(t)) return "skillet";
+  if (/\b(slow cooker|crock pot|crockpot)\b/.test(t)) return "slow_cooker";
+  if (/\b(biscuit|bread|roll|bun|loaf)\b/.test(t)) return "bread";
+  if (/\b(pasta|spaghetti|noodle|mac)\b/.test(t)) return "pasta";
+  return "comfort_general";
+}
+
+function infographicVessel(category: RecipeCategory): string {
+  if (category === "coleslaw_salad") return "a clear glass bowl";
+  if (category === "casserole") return "a rustic ceramic baking dish";
+  if (category === "soup") return "a rustic soup bowl";
+  if (category === "dessert") return "a cake stand with a plated slice nearby";
+  if (category === "skillet") return "a cast-iron skillet and rustic serving plate";
+  if (category === "slow_cooker") return "a cozy serving bowl";
+  if (category === "bread") return "a wooden board and bread basket";
+  if (category === "pasta") return "a deep ceramic pasta bowl";
+  return "a rustic serving bowl";
+}
+
+function infographicBackground(category: RecipeCategory): string {
+  if (category === "coleslaw_salad") return "crispy fried chicken pieces and a kitchen towel";
+  if (category === "casserole") return "a serving spoon, folded napkin, and extra casserole dish";
+  if (category === "soup") return "a bread basket and butter knife";
+  if (category === "dessert") return "a frosting bowl, whisk, and sliced dessert on a side plate";
+  if (category === "skillet") return "a skillet handle, herbs, and a wooden spoon";
+  if (category === "slow_cooker") return "a warm pot in the back with serving spoon and folded towel";
+  if (category === "bread") return "a flour jar, butter dish, and linen cloth";
+  if (category === "pasta") return "parmesan, herbs, and sauce jar softly blurred";
+  return "subtle kitchen props and related side ingredients";
+}
+
+function infographicIngredients(category: RecipeCategory): string[] {
+  if (category === "coleslaw_salad") {
+    return ["Cabbage - Carrot", "Onion", "Mayo - Vinegar", "Sugar - Lemon Juice", "Salt & Pepper"];
+  }
+  if (category === "casserole") {
+    return ["Chicken or Beef", "Creamy Base", "Cheese", "Onion - Garlic", "Seasoning Blend", "Broth or Sauce"];
+  }
+  if (category === "soup") {
+    return ["Broth", "Protein", "Onion - Celery", "Carrot", "Seasoning", "Herbs"];
+  }
+  if (category === "dessert") {
+    return ["Flour", "Sugar", "Butter", "Eggs", "Vanilla", "Milk or Cream"];
+  }
+  if (category === "skillet") {
+    return ["Protein", "Onion - Garlic", "Oil or Butter", "Veggies", "Seasoning", "Cheese (Optional)"];
+  }
+  if (category === "slow_cooker") {
+    return ["Protein", "Sauce Base", "Onion", "Garlic", "Seasoning", "Creamy Add-In"];
+  }
+  if (category === "bread") {
+    return ["Flour", "Yeast or Leavening", "Butter or Oil", "Milk or Water", "Sugar", "Salt"];
+  }
+  if (category === "pasta") {
+    return ["Pasta", "Sauce", "Protein", "Onion - Garlic", "Cheese", "Herbs"];
+  }
+  return ["Main Ingredient", "Onion - Garlic", "Sauce Base", "Creamy or Cheesy Element", "Seasoning", "Herbs"];
+}
+
+function infographicHeadlinePair(title: string): { line1: string; line2: string } {
+  const pairs = [
+    { line1: "EASY", line2: "HOMEMADE" },
+    { line1: "COPYCAT", line2: "RECIPE" },
+    { line1: "SOUTHERN", line2: "CLASSIC" },
+    { line1: "OLD FASHIONED", line2: "FAVORITE" },
+    { line1: "WEEKNIGHT", line2: "WINNER" },
+    { line1: "FAMILY", line2: "GO-TO" }
+  ];
+  return pairs[titleSeed(`${title}:headline`) % pairs.length];
+}
+
+function extractDomain(url?: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+function buildViralRecipeInfographicPrompt(title: string, ratioText: string, domain: string | null): string {
+  const category = inferRecipeCategory(title);
+  const vessel = infographicVessel(category);
+  const bg = infographicBackground(category);
+  const ingredients = infographicIngredients(category).slice(0, 7);
+  const headline = infographicHeadlinePair(title);
+  const footer = domain ? ` Include a small footer at bottom center: "FULL RECIPE @ ${domain}".` : "";
+  return normalizePromptText(
+    `Photorealistic viral recipe infographic image in ${ratioText}, warm rustic home-kitchen setting, soft natural window light, medium-close composition, slightly top-down 45-degree angle (not overhead). Center-right hero presentation of ${title}, shown in ${vessel}, with realistic homemade texture and appetizing detail. Bottom foreground shows physical ingredients on a wooden cutting board in small bowls and raw form: ${ingredients.join(", ")}. Top-left includes a bold social-media title block with three-level hierarchy: line 1 "${headline.line1}", line 2 ribbon "${headline.line2}", line 3 elegant script-style recipe name "${title}". Left side includes a short mobile-readable ingredient checklist with checkmarks using simplified items only: ${ingredients.map((v) => `✓ ${v}`).join(" / ")}. Background contains ${bg}, softly blurred, supporting the dish story without distraction.${footer} Cozy, practical, highly shareable Facebook and Pinterest recipe-card aesthetic; realistic food textures; natural imperfections; warm tones; shallow depth of field; high readability; no logos, no watermark clutter, no true overhead flat lay, no in-progress action, no studio look, no luxury editorial styling, no cluttered unreadable text.`
+  );
+}
+
 function normalizePromptText(text: string): string {
   return (text || "").replace(/\s+/g, " ").trim();
 }
@@ -643,7 +762,9 @@ function enforceVisualProfile(
   ratioText: string,
   _recipeImageFocus: RecipeImageFocus,
   title: string,
-  cameraAngleMode: CameraAngleMode
+  cameraAngleMode: CameraAngleMode,
+  recipeStyleMode: RecipeStyleMode,
+  sourceLink?: string
 ): string {
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
@@ -652,6 +773,9 @@ function enforceVisualProfile(
     .replace(/\bdark translucent box\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (type === "recipe" && recipeStyleMode === "viral_recipe_infographic") {
+    return buildViralRecipeInfographicPrompt(title, ratioText, extractDomain(sourceLink));
+  }
   const overlaySentence = recipeOverlaySentence(title);
   const actionMoment = recipeActionMoment(title, name);
   const handInteraction = recipeHandInteraction(title, name);
@@ -725,8 +849,13 @@ function buildNanobananaPrompt(
   type: InputType,
   _recipeImageFocus: RecipeImageFocus,
   title: string,
-  cameraAngleMode: CameraAngleMode
+  cameraAngleMode: CameraAngleMode,
+  recipeStyleMode: RecipeStyleMode,
+  sourceLink?: string
 ): string {
+  if (type === "recipe" && recipeStyleMode === "viral_recipe_infographic") {
+    return buildViralRecipeInfographicPrompt(title, "portrait 4:5 (1080x1350)", extractDomain(sourceLink));
+  }
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
   const actionMoment = recipeActionMoment(title, name);
@@ -792,7 +921,9 @@ function coerceGenerated(
   title: string,
   ratio: AspectRatio,
   recipeImageFocus: RecipeImageFocus,
-  cameraAngleMode: CameraAngleMode
+  cameraAngleMode: CameraAngleMode,
+  recipeStyleMode: RecipeStyleMode,
+  sourceLink?: string
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -816,36 +947,66 @@ function coerceGenerated(
           }
         ];
 
-  const namedPrompts = prompts
-    .map((p, idx) => ({
-      name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
-      prompt: (p.prompt || p.openai_prompt || "").trim()
-    }))
-    .filter((p) => p.prompt)
-    .map((p) => {
-      const openAIPrompt = enforceVisualProfile(
-        p.prompt,
-        p.name,
-        type,
-        ratioText,
-        recipeImageFocus,
-        title,
-        cameraAngleMode
-      );
-      return {
-        name: p.name,
-        prompt: openAIPrompt,
-        openai_prompt: openAIPrompt,
-        nanobanana_v2_prompt: buildNanobananaPrompt(
-          openAIPrompt,
-          p.name,
-          type,
-          recipeImageFocus,
-          title,
-          cameraAngleMode
-        )
-      };
-    });
+  const namedPrompts =
+    type === "recipe" && recipeStyleMode === "viral_recipe_infographic"
+      ? [
+          (() => {
+            const openAIPrompt = buildViralRecipeInfographicPrompt(
+              title,
+              "portrait 4:5 (1080x1350)",
+              extractDomain(sourceLink)
+            );
+            return {
+              name: "viral_recipe_infographic_prompt",
+              prompt: openAIPrompt,
+              openai_prompt: openAIPrompt,
+              nanobanana_v2_prompt: buildNanobananaPrompt(
+                openAIPrompt,
+                "viral_recipe_infographic_prompt",
+                type,
+                recipeImageFocus,
+                title,
+                cameraAngleMode,
+                recipeStyleMode,
+                sourceLink
+              )
+            };
+          })()
+        ]
+      : prompts
+          .map((p, idx) => ({
+            name: p.name?.trim() || (idx === 0 ? "photo_prompt" : "text_overlay_prompt"),
+            prompt: (p.prompt || p.openai_prompt || "").trim()
+          }))
+          .filter((p) => p.prompt)
+          .map((p) => {
+            const openAIPrompt = enforceVisualProfile(
+              p.prompt,
+              p.name,
+              type,
+              ratioText,
+              recipeImageFocus,
+              title,
+              cameraAngleMode,
+              recipeStyleMode,
+              sourceLink
+            );
+            return {
+              name: p.name,
+              prompt: openAIPrompt,
+              openai_prompt: openAIPrompt,
+              nanobanana_v2_prompt: buildNanobananaPrompt(
+                openAIPrompt,
+                p.name,
+                type,
+                recipeImageFocus,
+                title,
+                cameraAngleMode,
+                recipeStyleMode,
+                sourceLink
+              )
+            };
+          });
 
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 5) : [];
   const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
@@ -982,6 +1143,7 @@ export async function POST(req: NextRequest) {
     const ratio = normalizeAspectRatio(body.aspectRatio);
     const recipeImageFocus = normalizeRecipeImageFocus(body.recipeImageFocus);
     const cameraAngleMode = normalizeCameraAngleMode(body.cameraAngleMode);
+    const recipeStyleMode = normalizeRecipeStyleMode(body.recipeStyleMode);
     const link = (body.link || "").trim();
     const rawTitle = (body.title || "").trim();
 
@@ -1002,7 +1164,8 @@ export async function POST(req: NextRequest) {
       linkData,
       aspectRatio: ratio,
       recipeImageFocus,
-      cameraAngleMode
+      cameraAngleMode,
+      recipeStyleMode
     });
 
     const generatedRaw = await callOpenAI(STYLE_RULES, userPrompt);
@@ -1012,7 +1175,9 @@ export async function POST(req: NextRequest) {
       resolvedTitle,
       ratio,
       recipeImageFocus,
-      cameraAngleMode
+      cameraAngleMode,
+      recipeStyleMode,
+      link || undefined
     );
 
     return NextResponse.json(
@@ -1023,7 +1188,8 @@ export async function POST(req: NextRequest) {
           link: link || null,
           aspectRatio: ratio,
           recipeImageFocus: type === "recipe" ? recipeImageFocus : null,
-          cameraAngleMode: type === "recipe" ? cameraAngleMode : null
+          cameraAngleMode: type === "recipe" ? cameraAngleMode : null,
+          recipeStyleMode: type === "recipe" ? recipeStyleMode : null
         },
         generated
       },

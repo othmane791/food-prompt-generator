@@ -17,8 +17,10 @@ Hard rules:
      * "regular_40_55": around 40-55 degrees above the food
      * "above": above shot / top-down smartphone view from above
    - close or medium-close composition with tight crop so food dominates frame
-   - for recipe posts, scene must be in-progress cooking action, never finished plated dish
-   - action examples to rotate: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan
+   - recipe style must follow input "recipe_style_mode":
+     * "action_prep": in-progress cooking action, never finished plated dish
+     * "viral_recipe_infographic": finished dish visible with infographic-style text structure and ingredient display
+   - action examples for action_prep mode: pouring sauce, sprinkling seasoning, stirring, scooping, lifting with spatula, drizzling butter/oil, adding cheese, layering, mixing, serving from pan
    - realistic food textures: irregular browning, bubbling sauce/oil, sizzling droplets, crispy edges, melting ingredients, uneven seasoning, natural imperfections
    - warm natural side window light with soft shadows and uneven highlights (not studio)
    - realistic home kitchen context with prep bowls, utensils, ingredients, cutting boards, cookware casually nearby
@@ -41,7 +43,9 @@ Hard rules:
    - recipe: curiosity-driven hook sentence (10-18 words) referencing the recipe, bold black sans-serif on white rounded rectangle banner, top/upper-middle
    - article: bold light sans-serif on dark translucent box, centered/upper-middle, 1-2 lines
    - no logos/watermarks
-12) For recipe posts, always prioritize active prep/cooking moment and texture detail over plated presentation.
+12) For recipe posts:
+   - action_prep mode: prioritize active prep/cooking moment and texture detail.
+   - viral_recipe_infographic mode: prioritize finished dish hero + ingredient checklist readability + shareable recipe-card layout.
 13) Visual profile constraints from historical analysis:
    - recipe: mostly photo-first, warm tones, practical close framing, kitchen realism, low text-overlay usage.
    - article: higher text-overlay usage, cleaner background behind text, high-contrast readable headline treatment.
@@ -91,6 +95,15 @@ Hard rules:
    - smartphone depth-of-field behavior
    - overlay headline instruction (for text_overlay_prompt only)
    - realism/staging constraints
+21) For "viral_recipe_infographic" mode, generate one clean prompt that includes:
+   - portrait 4:5, medium-close, slightly top-down ~45-degree view (not overhead)
+   - center-right finished dish hero with realistic homemade texture
+   - top-left strong 3-line title hierarchy (bold cue + ribbon cue + recipe name style line)
+   - left-side short ingredient checklist (5-7 simplified lines, checkmarks, mobile-readable)
+   - bottom foreground physical ingredients (4-8 elements) on wooden board/rustic surface
+   - subtle contextual background props, softly blurred
+   - warm rustic home-kitchen light, soft shadows, practical shareable aesthetic
+   - avoid in-progress action, avoid studio/editorial look, avoid logo/watermark clutter
 
 Output must be valid JSON only (no markdown), with this shape:
 {
