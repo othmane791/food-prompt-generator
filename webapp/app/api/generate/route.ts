@@ -21,6 +21,7 @@ type LinkExtract = {
   title: string;
   description: string;
   bodySnippet: string;
+  featuredImageUrl?: string;
 };
 
 type GeneratedShape = {
@@ -84,6 +85,14 @@ function stripHtml(text: string): string {
   return text.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function toAbsoluteUrl(raw: string, base: string): string {
+  try {
+    return new URL(raw, base).toString();
+  } catch {
+    return raw;
+  }
+}
+
 async function fetchLinkData(url: string): Promise<LinkExtract> {
   const res = await fetch(url, {
     method: "GET",
@@ -101,7 +110,12 @@ async function fetchLinkData(url: string): Promise<LinkExtract> {
   const title = extractTag(html, "title");
   const description = extractMeta(html, "description") || extractMeta(html, "og:description");
   const bodySnippet = stripHtml(html).slice(0, 1600);
-  return { title, description, bodySnippet };
+  const rawFeatured =
+    extractMeta(html, "og:image") ||
+    extractMeta(html, "twitter:image") ||
+    extractMeta(html, "twitter:image:src");
+  const featuredImageUrl = rawFeatured ? toAbsoluteUrl(rawFeatured, url) : undefined;
+  return { title, description, bodySnippet, featuredImageUrl };
 }
 
 function buildUserPrompt(input: {
@@ -121,6 +135,7 @@ function buildUserPrompt(input: {
       title: input.title,
       source_link: input.link || "",
       source_preview: input.linkData || null,
+      featured_image_reference: input.type === "recipe" ? (input.linkData?.featuredImageUrl || "") : "",
       aspect_ratio: input.aspectRatio,
       aspect_format: aspectLabel(input.aspectRatio),
       recipe_image_focus: input.recipeImageFocus,
@@ -711,13 +726,16 @@ function ingredientStripIngredients(category: RecipeCategory): string[] {
   return ["main ingredient", "oil or butter", "onion", "garlic", "seasoning", "herbs"];
 }
 
-function buildIngredientStripRecipePrompt(title: string, ratioText: string): string {
+function buildIngredientStripRecipePrompt(title: string, ratioText: string, referenceImageUrl?: string): string {
   const category = inferRecipeCategory(title);
   const vessel = ingredientStripVessel(category);
   const bg = ingredientStripBackground(category);
   const ingredients = ingredientStripIngredients(category).slice(0, 6);
+  const refLine = referenceImageUrl
+    ? ` Use this featured image as visual reference for dish identity and styling (do not copy logos/text): ${referenceImageUrl}.`
+    : "";
   return normalizePromptText(
-    `Photorealistic viral recipe image in ${ratioText}. Clean two-section layout optimized for Facebook and Pinterest mobile feeds. Top section: centered title "${title}" in bold simple sans-serif black text, no ribbon, no badge, no decorative banner. Directly below title, a horizontal ingredient strip on clean white background showing isolated ingredients evenly spaced with small labels under each: ${ingredients.join(", ")}. Labels must be short and mobile-readable. Bottom 60-70% section: tight medium-close hero shot of the finished dish in ${vessel}, camera slightly above at 30-45 degrees (not overhead), food filling most of frame. Dish should look glossy, rich, textured, appetizing, realistic homemade cooking with visible sauce shine, vegetables, herbs or scallions, and natural texture variation. Bright natural kitchen light with soft highlights and gentle depth of field. Subtle contextual background props (${bg}) softly blurred, clean and not cluttered. Strong vibrant food color contrast, scroll-stopping but realistic. No infographic bullet lists, no checkmark list, no decorative ribbons, no step instructions, no logos, no watermarks, no cluttered background, no pure overhead flat lay, no studio look.`
+    `Photorealistic viral recipe image in ${ratioText}. Clean two-section layout optimized for Facebook and Pinterest mobile feeds. Top section: centered title "${title}" in bold simple sans-serif black text, no ribbon, no badge, no decorative banner. Directly below title, a horizontal ingredient strip on clean white background showing isolated ingredients evenly spaced with small labels under each: ${ingredients.join(", ")}. Labels must be short and mobile-readable. Bottom 60-70% section: tight medium-close hero shot of the finished dish in ${vessel}, camera slightly above at 30-45 degrees (not overhead), food filling most of frame. Dish should look glossy, rich, textured, appetizing, realistic homemade cooking with visible sauce shine, vegetables, herbs or scallions, and natural texture variation. Bright natural kitchen light with soft highlights and gentle depth of field. Subtle contextual background props (${bg}) softly blurred, clean and not cluttered. Strong vibrant food color contrast, scroll-stopping but realistic.${refLine} No infographic bullet lists, no checkmark list, no decorative ribbons, no step instructions, no logos, no watermarks, no cluttered background, no pure overhead flat lay, no studio look.`
   );
 }
 
@@ -749,7 +767,8 @@ function enforceVisualProfile(
   _recipeImageFocus: RecipeImageFocus,
   title: string,
   cameraAngleMode: CameraAngleMode,
-  recipeStyleMode: RecipeStyleMode
+  recipeStyleMode: RecipeStyleMode,
+  referenceImageUrl?: string
 ): string {
   const name = (promptName || "").toLowerCase();
   let cleaned = withAspect(prompt, ratioText)
@@ -759,7 +778,7 @@ function enforceVisualProfile(
     .replace(/\s+/g, " ")
     .trim();
   if (type === "recipe" && recipeStyleMode === "ingredient_strip_recipe") {
-    return buildIngredientStripRecipePrompt(title, ratioText);
+    return buildIngredientStripRecipePrompt(title, ratioText, referenceImageUrl);
   }
   const overlaySentence = recipeOverlaySentence(title);
   const actionMoment = recipeActionMoment(title, name);
@@ -783,11 +802,15 @@ function enforceVisualProfile(
   ].join(" ");
   const articleRealismStyle =
     "Casual smartphone kitchen-photo feel with slight handheld perspective and mildly imperfect framing. Keep composition practical and natural, with side window light, soft shadows, and realistic texture detail, while avoiding polished studio styling or perfect symmetry.";
+  const referenceLine = referenceImageUrl
+    ? `Reference image alignment: use featured image as visual reference for dish identity, serving style, and color direction; do not copy any text/logo elements. Reference URL: ${referenceImageUrl}.`
+    : "";
 
   const parts: string[] = [cleaned];
 
   if (type === "recipe") {
     parts.push("Style profile: realistic viral home-cooking smartphone shot focused on in-progress prep action.");
+    if (referenceLine) parts.push(referenceLine);
     parts.push(recipeRealismStyle);
     parts.push(recipeFocusSentence());
     if (name.includes("text_overlay")) {
@@ -835,10 +858,11 @@ function buildNanobananaPrompt(
   _recipeImageFocus: RecipeImageFocus,
   title: string,
   cameraAngleMode: CameraAngleMode,
-  recipeStyleMode: RecipeStyleMode
+  recipeStyleMode: RecipeStyleMode,
+  referenceImageUrl?: string
 ): string {
   if (type === "recipe" && recipeStyleMode === "ingredient_strip_recipe") {
-    return buildIngredientStripRecipePrompt(title, "portrait 4:5 (1080x1350)");
+    return buildIngredientStripRecipePrompt(title, "portrait 4:5 (1080x1350)", referenceImageUrl);
   }
   const name = (promptName || "").toLowerCase();
   const scene = baseSceneFromOpenAIPrompt(openAIPrompt);
@@ -868,8 +892,12 @@ function buildNanobananaPrompt(
   const articleRealismStyle =
     "Casual smartphone kitchen-photo feel with slight handheld perspective, practical framing, natural side window light, and realistic texture detail. Avoid polished magazine styling and perfect symmetry.";
   const parts: string[] = [];
+  const referenceLine = referenceImageUrl
+    ? `Reference image: match dish identity and plating cues from ${referenceImageUrl}; do not copy text or logo marks.`
+    : "";
 
   if (type === "recipe") {
+    if (referenceLine) parts.push(referenceLine);
     parts.push(cameraAngleSentence);
     parts.push(cameraAngleNegative);
     parts.push(scene);
@@ -906,7 +934,8 @@ function coerceGenerated(
   ratio: AspectRatio,
   recipeImageFocus: RecipeImageFocus,
   cameraAngleMode: CameraAngleMode,
-  recipeStyleMode: RecipeStyleMode
+  recipeStyleMode: RecipeStyleMode,
+  referenceImageUrl?: string
 ): GeneratedShape {
   const src = (raw && typeof raw === "object" ? raw : {}) as GeneratedShape;
   const ratioText = aspectLabel(ratio);
@@ -934,7 +963,11 @@ function coerceGenerated(
     type === "recipe" && recipeStyleMode === "ingredient_strip_recipe"
       ? [
           (() => {
-            const openAIPrompt = buildIngredientStripRecipePrompt(title, "portrait 4:5 (1080x1350)");
+            const openAIPrompt = buildIngredientStripRecipePrompt(
+              title,
+              "portrait 4:5 (1080x1350)",
+              referenceImageUrl
+            );
             return {
               name: "ingredient_strip_recipe_prompt",
               prompt: openAIPrompt,
@@ -946,7 +979,8 @@ function coerceGenerated(
                 recipeImageFocus,
                 title,
                 cameraAngleMode,
-                recipeStyleMode
+                recipeStyleMode,
+                referenceImageUrl
               )
             };
           })()
@@ -966,7 +1000,8 @@ function coerceGenerated(
               recipeImageFocus,
               title,
               cameraAngleMode,
-              recipeStyleMode
+              recipeStyleMode,
+              referenceImageUrl
             );
             return {
               name: p.name,
@@ -979,7 +1014,8 @@ function coerceGenerated(
                 recipeImageFocus,
                 title,
                 cameraAngleMode,
-                recipeStyleMode
+                recipeStyleMode,
+                referenceImageUrl
               )
             };
           });
@@ -1152,7 +1188,8 @@ export async function POST(req: NextRequest) {
       ratio,
       recipeImageFocus,
       cameraAngleMode,
-      recipeStyleMode
+      recipeStyleMode,
+      type === "recipe" ? linkData?.featuredImageUrl : undefined
     );
 
     return NextResponse.json(
@@ -1164,7 +1201,8 @@ export async function POST(req: NextRequest) {
           aspectRatio: ratio,
           recipeImageFocus: type === "recipe" ? recipeImageFocus : null,
           cameraAngleMode: type === "recipe" ? cameraAngleMode : null,
-          recipeStyleMode: type === "recipe" ? recipeStyleMode : null
+          recipeStyleMode: type === "recipe" ? recipeStyleMode : null,
+          featuredImageUrl: type === "recipe" ? (linkData?.featuredImageUrl || null) : null
         },
         generated
       },
