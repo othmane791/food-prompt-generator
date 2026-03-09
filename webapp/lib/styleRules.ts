@@ -92,6 +92,7 @@ Hard rules:
 21) For "ingredient_strip_recipe" mode, generate one clean prompt that includes:
    - portrait 4:5, medium-close, slightly top-down ~30-45-degree view (not overhead)
    - clean top-center title in simple bold sans-serif text
+   - title must be exactly one line (no wrapping); reduce font size to fit if needed
    - horizontal ingredient strip below title with 4-6 isolated ingredients on white background
    - small readable ingredient labels under each ingredient (short labels only)
    - bottom 60-70% hero shot of finished dish, rich texture, vibrant color, realistic homemade look
