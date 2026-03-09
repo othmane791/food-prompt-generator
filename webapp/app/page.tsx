@@ -61,6 +61,7 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<ApiSuccess | null>(null);
   const [copiedKey, setCopiedKey] = useState("");
+  const [downloadingComposed, setDownloadingComposed] = useState(false);
 
   const canSubmit = useMemo(() => title.trim().length > 0 || link.trim().length > 0, [title, link]);
   const mergedCaptionOptions = (
@@ -132,6 +133,97 @@ export default function HomePage() {
       !!data.input.featuredImageUrl &&
       !!(data.generated_image?.data_url || data.generated_image?.remote_url)
     );
+  }
+
+  function proxyImageUrl(url: string): string {
+    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+  }
+
+  function loadImageElement(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+      img.src = src;
+    });
+  }
+
+  function drawCover(
+    ctx: CanvasRenderingContext2D,
+    img: HTMLImageElement,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+    position: "top" | "center" = "center"
+  ) {
+    const scale = Math.max(dw / img.width, dh / img.height);
+    const sw = dw / scale;
+    const sh = dh / scale;
+    const sx = Math.max(0, (img.width - sw) / 2);
+    const sy = position === "top" ? 0 : Math.max(0, (img.height - sh) / 2);
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+
+  function slugifyFileName(input: string): string {
+    return (
+      input
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "recipe-image"
+    );
+  }
+
+  async function downloadComposedImage(data: ApiSuccess) {
+    if (!shouldUseOriginalBottomImage(data)) return;
+    const topRaw = data.generated_image?.data_url || data.generated_image?.remote_url || "";
+    const bottomRaw = data.input.featuredImageUrl || "";
+    if (!topRaw || !bottomRaw) return;
+
+    setDownloadingComposed(true);
+    try {
+      const topSrc = topRaw.startsWith("data:") ? topRaw : proxyImageUrl(topRaw);
+      const bottomSrc = proxyImageUrl(bottomRaw);
+      const [topImage, bottomImage] = await Promise.all([
+        loadImageElement(topSrc),
+        loadImageElement(bottomSrc)
+      ]);
+
+      const width = 1080;
+      const height = 1350;
+      const topHeight = Math.round(height * 0.38);
+      const bottomHeight = height - topHeight;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas context unavailable");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      drawCover(ctx, topImage, 0, 0, width, topHeight, "top");
+      drawCover(ctx, bottomImage, 0, topHeight, width, bottomHeight, "center");
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((out) => {
+          if (out) resolve(out);
+          else reject(new Error("Failed to create image file"));
+        }, "image/png");
+      });
+
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = `${slugifyFileName(data.input.title)}-1080x1350.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download composed image");
+    } finally {
+      setDownloadingComposed(false);
+    }
   }
 
   return (
@@ -290,20 +382,32 @@ export default function HomePage() {
                 ) : null}
                 {result.generated_image.data_url || result.generated_image.remote_url ? (
                   shouldUseOriginalBottomImage(result) ? (
-                    <div className="split-image-wrap" aria-label="Composed image with original bottom recipe photo">
-                      <img
-                        className="split-top"
-                        src={result.generated_image.data_url || result.generated_image.remote_url || ""}
-                        alt="Generated top template"
-                        loading="lazy"
-                      />
-                      <img
-                        className="split-bottom"
-                        src={result.input.featuredImageUrl || ""}
-                        alt="Original recipe bottom photo"
-                        loading="lazy"
-                      />
-                    </div>
+                    <>
+                      <div className="split-image-wrap" aria-label="Composed image with original bottom recipe photo">
+                        <img
+                          className="split-top"
+                          src={result.generated_image.data_url || result.generated_image.remote_url || ""}
+                          alt="Generated top template"
+                          loading="lazy"
+                        />
+                        <img
+                          className="split-bottom"
+                          src={result.input.featuredImageUrl || ""}
+                          alt="Original recipe bottom photo"
+                          loading="lazy"
+                        />
+                      </div>
+                      <div className="download-row">
+                        <button
+                          className="copy-btn"
+                          type="button"
+                          onClick={() => downloadComposedImage(result)}
+                          disabled={downloadingComposed}
+                        >
+                          {downloadingComposed ? "Preparing..." : "Download Final 1080x1350"}
+                        </button>
+                      </div>
+                    </>
                   ) : (
                     <div className="generated-image-wrap">
                       <img

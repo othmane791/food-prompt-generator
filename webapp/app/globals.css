@@ -296,6 +296,11 @@ pre {
   z-index: 1;
 }
 
+.download-row {
+  margin-top: 0.6rem;
+  display: flex;
+}
+
 .error-inline {
   color: #9c2f22;
 }
