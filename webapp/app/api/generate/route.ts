@@ -1513,8 +1513,7 @@ async function generateOpenAIImage(params: {
       body: JSON.stringify({
         model,
         prompt: params.promptText,
-        size,
-        response_format: "b64_json"
+        size
       })
     });
     const parsed = await parseOpenAIImageResponse(res);
