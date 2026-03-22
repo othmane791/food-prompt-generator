@@ -57,31 +57,22 @@ Hard rules:
    - default to bold white/light text on dark translucent box
    - centered or upper-middle
    - 1-2 lines max, mobile readable.
-16) Caption-generation style constraints from analyzed winners:
-   - Top performers are mostly first-person testimonial style; favor human voice over generic ad copy.
-   - Include family/social proof context often (e.g., husband, kids, party, everyone asked for more).
-   - Use sensory or reaction language (bite, smelled amazing, vanished fast, asked for seconds).
-   - Include concrete title detail (ingredient/tool/method/count) in most options.
-   - Generate exactly 5 distinct options with clearly different wording.
-   - Avoid repetitive filler phrases and avoid duplicate sentence structures.
-   - Keep diction broad and varied; do not recycle the same 5-10 words across options.
-   - Keep every option CTA-ready (line 2 exact CTA string).
-17) Recipe options must map to these exact viral angles (one each, in this order):
-   - Option 1 Shock reaction: pattern like "OMG ... one bite and ..."
-   - Option 2 Family disbelief flip: pattern like "my husband/family doubted it ... then ..."
-   - Option 3 Party/social proof: pattern like "brought this to a party ... gone first"
-   - Option 4 Nostalgia hit: pattern like "tastes like what grandma made ..."
-   - Option 5 Ease + payoff brag: mention ingredient count or dump-and-go simplicity + strong payoff
-18) Keep voice bold and human:
-   - conversational first-person voice
-   - stronger emotional verbs/reactions
-   - avoid bland phrasing like "easy dinner" without a payoff
-   - no repeated sentence skeletons across options
-19) Viral token requirement:
-   - Every recipe caption must contain at least one reaction token OR one social token.
-   - Reaction examples (use broad variety): OMG, one bite, gone in minutes, plates were empty, smell was unreal, instant favorite, crazy good flavor, priceless reaction.
-   - Social examples (use broad variety): everyone asked for seconds, husband asked again, kids cleaned their plates, neighbors asked what smelled good, party guests asked for recipe.
-   - Do not overuse any single token; rotate vocabulary across the 5 options.
+16) Caption-generation: each of the 5 caption options MUST use a different archetype.
+   Archetypes (one per option, in order):
+   1. QUESTION HOOK — a genuine question that invites comments (e.g., "Am I the only one...", "Who else...", "Has anyone tried...")
+   2. SOCIAL PROOF — a specific personal story with a real person reacting (husband, kids, neighbor, coworker, friend, mother-in-law)
+   3. CURIOSITY GAP — tease a secret, trick, or unexpected detail without revealing it fully
+   4. HOT TAKE / CONTROVERSIAL — a bold opinion or stance that sparks debate ("I will die on that hill", "Unpopular opinion...")
+   5. EASE / SPEED BRAG — emphasize how shockingly simple or fast it is with a payoff
+   Rules for all options:
+   - First-person conversational voice, never ad copy
+   - Each option must have completely different sentence structure and vocabulary
+   - No two options should start the same way
+   - Keep every option CTA-ready (line 2 exact CTA string)
+   - Be specific to the actual recipe or article, not generic
+17) Questions must be genuine and answerable to drive real comments, not rhetorical fluff.
+18) Social proof must name a specific person or group (not just "everyone loved it") and include a concrete reaction.
+19) Do not force any fixed keyword list or template. Each caption should read like a unique Facebook post from a different person.
 20) Recipe image prompt structure should be complete and ordered:
    - base photorealistic home-kitchen image description
    - smartphone camera angle and framing

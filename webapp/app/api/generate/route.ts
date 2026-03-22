@@ -146,25 +146,22 @@ function buildUserPrompt(input: {
       camera_angle_mode: input.cameraAngleMode,
       recipe_style_mode: input.recipeStyleMode,
       caption_strategy: {
-        source: "top-engagement analysis",
-        first_line_target_words: "18-24 (occasionally up to 28)",
-        diction_goal: "high-variety colloquial social voice; avoid repetitive sterile phrasing",
-        recipe_cta_mix: [
-          "Full recipe 👇 💬",
-          "Recipe in comments ⬇️",
-          "Recipe in first comment 👇"
+        source: "high-CTR Facebook food page analysis",
+        archetypes: [
+          "1: QUESTION HOOK — genuine question inviting comments",
+          "2: SOCIAL PROOF — specific person + concrete reaction",
+          "3: CURIOSITY GAP — tease a secret or unexpected detail",
+          "4: HOT TAKE — bold opinion that sparks debate",
+          "5: EASE/SPEED BRAG — shockingly simple with a payoff"
         ],
-        lexical_bank: {
-          reaction_tokens: REACTION_TOKEN_POOL,
-          social_tokens: SOCIAL_TOKEN_POOL
-        },
-        target_patterns: [
-          "first-person testimonial voice",
-          "family/social proof mention",
-          "reaction and sensory language",
-          "concrete detail from title",
-          "short hook + fixed CTA"
+        constraints: [
+          "each of the 5 options MUST use a different archetype in order",
+          "never start two options the same way",
+          "be specific to this recipe/article, not generic",
+          "questions must be answerable to drive real comments",
+          "social proof must name a specific person and their reaction"
         ],
+        cta_policy: "include clear post CTA line",
         max_options: 5
       },
       recipe_image_strategy: {
@@ -212,105 +209,85 @@ function titleSeed(title: string): number {
   return hash;
 }
 
-const REACTION_TOKEN_POOL = [
-  "OMG",
-  "one bite and we were hooked",
-  "gone in minutes",
-  "plates were empty fast",
-  "could not stop eating it",
-  "so good it is dangerous",
-  "angels sing moment",
-  "everyone licked the spoon",
-  "the smell was unreal",
-  "pure comfort in every bite",
-  "priceless reaction at the table",
-  "we could not believe how good it was",
-  "instant favorite",
-  "ridiculously good",
-  "crazy good flavor",
-  "that first bite sold everyone",
-  "it vanished before seconds were served",
-  "mouthwatering from the first spoonful",
-  "tastebuds went wild",
-  "better than expected"
+// ── CAPTION ARCHETYPE POOLS ──
+// Each index maps to an archetype: 0=question, 1=social-proof, 2=curiosity-gap, 3=hot-take, 4=ease-brag
+
+const QUESTION_HOOKS = [
+  "Am I the only one who makes this every single week",
+  "Why does nobody talk about how good this is",
+  "Has anyone else tried this and been completely obsessed",
+  "Be honest, would you eat this for dinner 3 nights in a row",
+  "Who else grew up eating this and still craves it",
+  "How is something this simple also this addictive",
+  "Is it just me or does this smell better than it should",
+  "Okay but why does this taste like a restaurant made it",
+  "Can someone explain why this is so underrated",
+  "Tell me your family would not destroy this in 10 minutes",
+  "What would you add to make this even better",
+  "Who else makes this when they have zero energy to cook",
+  "Does anyone else get unreasonably excited about this",
+  "Is there a better weeknight dinner than this, honestly",
+  "Why did it take me so long to try this"
 ];
 
-const SOCIAL_TOKEN_POOL = [
-  "everyone asked for seconds",
-  "my husband asked for this again",
-  "my kids cleaned their plates",
-  "neighbors asked what smelled so good",
-  "party guests kept asking for the recipe",
-  "family table favorite",
-  "potluck winner",
-  "birthday crowd loved it",
-  "friends begged for the method",
-  "the whole house loved it",
-  "my mom asked me to make it again",
-  "my dad went back for more",
-  "weeknight hit at my house",
-  "holiday table approved",
-  "church supper style favorite",
-  "cookout crowd favorite",
-  "everyone at dinner wanted the recipe",
-  "my sister asked for this on repeat",
-  "my grandson asked for another bowl",
-  "our guests wiped the dish clean"
+const SOCIAL_PROOF_HOOKS = [
+  "Made this for my husband and he literally asked for it again the next day",
+  "Brought this to a potluck and three people texted me for the recipe after",
+  "My 5-year-old who eats nothing finished the entire plate",
+  "My neighbor smelled this cooking and knocked on my door to ask what it was",
+  "Posted this last time and 400 people saved it, so here it is again",
+  "My mother-in-law said this was better than hers and she never says that",
+  "Made a double batch and there were still no leftovers",
+  "My coworker tried this and now makes it every Sunday",
+  "Served this at Thanksgiving and it got more compliments than the turkey",
+  "My teenage son who lives on pizza asked me to make this again",
+  "Three families on my street now make this weekly because of me",
+  "My friend who is a chef told me this was legitimately good",
+  "Brought this to a work lunch and someone asked if it was catered",
+  "My grandmother tried this and said it reminded her of her own cooking",
+  "I have made this 11 times in 2 months and I am not even sorry"
 ];
 
-const DIVERSE_OPENER_POOL = [
-  "I was not expecting this",
-  "Real talk",
-  "No joke",
-  "I have to share this",
-  "This one surprised me",
-  "I made this once",
-  "I thought this was hype",
-  "Confession",
-  "Quick story",
-  "Hot take"
+const CURIOSITY_GAP_HOOKS = [
+  "The secret ingredient in this is something you already have in your pantry",
+  "I almost did not try this because it sounded too simple to be good",
+  "There is one step most people skip that completely changes this dish",
+  "I was today years old when I learned you could make this at home",
+  "The trick that makes this taste like it took 3 hours when it took 20 minutes",
+  "Everyone makes this wrong and it is one small change that fixes it",
+  "This is what happens when you stop following the box instructions",
+  "The ingredient swap that took this from okay to absolutely unreal",
+  "I ignored one rule from the original recipe and it turned out twice as good",
+  "Nobody told me this was going to be the best thing I have ever made",
+  "What restaurant kitchens do differently with this that home cooks miss",
+  "I did not believe this would work until I actually tasted it",
+  "The reason this tastes better the next day is not what you think"
 ];
 
-const SHOCK_ANGLE_TOKENS = [
-  "OMG",
-  "one bite and everyone lost it",
-  "gone in minutes",
-  "plates were empty fast",
-  "angels sing moment",
-  "priceless table reaction"
+const HOT_TAKE_HOOKS = [
+  "This is better than the restaurant version and I will die on that hill",
+  "Unpopular opinion but this does not need all those extra ingredients people add",
+  "I said what I said, this is the only version of this worth making",
+  "Stop overcomplicating this, the simple way tastes better every time",
+  "Hot take, the cheap version of this actually tastes better",
+  "I do not care what anyone says, this is peak comfort food",
+  "Hear me out, this weird combination actually works perfectly",
+  "Controversial but I think this beats the classic version",
+  "The way most people season this is completely wrong, try this instead",
+  "I know this looks basic but it outperforms every fancy version I have tried"
 ];
 
-const FAMILY_FLIP_TOKENS = [
-  "my husband doubted it",
-  "my family side-eyed it at first",
-  "my wife was skeptical at first",
-  "the kids were unsure at first",
-  "my dad said it would be average"
-];
-
-const PARTY_PROOF_TOKENS = [
-  "brought this to a party",
-  "served this at a potluck",
-  "put this out at a family gathering",
-  "made this for guests over the weekend",
-  "took this to a church supper"
-];
-
-const NOSTALGIA_TOKENS = [
-  "tastes like what grandma made",
-  "just like my mom used to make",
-  "old-school Sunday supper flavor",
-  "that first bite felt like childhood again",
-  "straight out of grandma's kitchen"
-];
-
-const EASE_BRAG_TOKENS = [
-  "just 3 ingredients",
-  "just 4 ingredients",
-  "dump-and-go style",
-  "almost no prep",
-  "just set it and forget it",
-  "ridiculously easy for weeknights"
+const EASE_BRAG_HOOKS = [
+  "5 ingredients and 15 minutes is all this takes and it tastes like I cooked all day",
+  "If you can stir a spoon you can make this, that is literally the skill level",
+  "I made this half asleep on a Tuesday and it was still incredible",
+  "One pan, no fancy skills, dinner done before the kids finish homework",
+  "This is my go-to when I have nothing planned and 20 minutes to figure it out",
+  "Zero cooking talent required, I promise you cannot mess this up",
+  "My laziest dinner is somehow also my most requested one",
+  "Threw this together with what was left in the fridge and my family thinks I am a chef now",
+  "This takes less effort than ordering takeout and tastes better too",
+  "The fact that something this easy tastes this good should be illegal"
 ];
 
 function clampWordRange(text: string, minWords: number, maxWords: number, fillers: string[]): string {
@@ -347,67 +324,38 @@ function stemKey(text: string): string {
 
 function buildRecipeViralAngle(index: number, title: string, variant = 0): string {
   const seed = titleSeed(`${title}:${index}:${variant}`);
-  const ingredient = recipeMainIngredient(title);
-  const ingredientText = ingredient === "dinner" ? "this dish" : ingredient;
-  const count = ingredientCountPhrase(title);
-  const action = inferRecipeAction(title).toLowerCase();
-  const social = pickSeeded(SOCIAL_TOKEN_POOL, seed + 21);
-  const reaction = pickSeeded(REACTION_TOKEN_POOL, seed + 23);
-
-  if (index === 0) {
-    const shock = pickSeeded(SHOCK_ANGLE_TOKENS, seed + 1);
-    return `${shock}, one bite and ${social}; ${action} ${count} over ${ingredientText} and it disappeared fast`;
-  }
-  if (index === 1) {
-    const doubt = pickSeeded(FAMILY_FLIP_TOKENS, seed + 3);
-    return `${doubt}, then asked for seconds and told me to save this recipe, ${social}`;
-  }
-  if (index === 2) {
-    const party = pickSeeded(PARTY_PROOF_TOKENS, seed + 7);
-    return `I ${party} and it was gone first; ${social} before I even sat down`;
-  }
-  if (index === 3) {
-    const nostalgia = pickSeeded(NOSTALGIA_TOKENS, seed + 11);
-    return `${nostalgia}, and ${reaction} hit as soon as dinner reached the table`;
-  }
-  const ease = pickSeeded(EASE_BRAG_TOKENS, seed + 15);
-  return `${count}, ${ease}, and still unbelievably good; ${reaction} with almost zero effort`;
+  // Each index maps to an archetype: 0=question, 1=social-proof, 2=curiosity-gap, 3=hot-take, 4=ease-brag
+  const pools = [QUESTION_HOOKS, SOCIAL_PROOF_HOOKS, CURIOSITY_GAP_HOOKS, HOT_TAKE_HOOKS, EASE_BRAG_HOOKS];
+  const pool = pools[index % pools.length];
+  return pickSeeded(pool, seed + variant * 7);
 }
 
 function lineMatchesAngle(line: string, index: number): boolean {
   const low = line.toLowerCase();
-  if (index === 0) return /(omg|one bite|gone in minutes|plates were empty|angels sing|priceless)/.test(low);
-  if (index === 1) return /(husband|wife|family|kids|dad).*(doubt|skept|unsure|side-eye|side eyed|then|seconds)/.test(low);
-  if (index === 2) return /(party|potluck|gathering|guests|church supper).*(gone|vanish|asked|recipe|first|seconds)/.test(low);
-  if (index === 3) return /(grandma|mom|old-school|childhood|used to make)/.test(low);
-  return /(3 ingredients|4 ingredients|ingredients|dump-and-go|set it and forget it|no prep|easy).*(unbeliev|crazy good|hooked|gone|favorite|zero effort)/.test(low);
+  if (index === 0) return /\?|am i the only|who else|why does|has anyone|be honest|how is|is it just me|tell me|what would/.test(low);
+  if (index === 1) return /(husband|wife|kids|neighbor|potluck|coworker|mother-in-law|friend|family|son|daughter|grandmother).*(asked|said|tried|texted|finished|smelled|saved|compliment)/.test(low);
+  if (index === 2) return /(secret|trick|step most people|today years old|one rule|swap|wrong|did not believe|reason.*not what)/.test(low);
+  if (index === 3) return /(die on that hill|unpopular opinion|hot take|hear me out|controversial|stop overcomplicating|i said what i said|i do not care)/.test(low);
+  return /(5 ingredients|15 minutes|one pan|no fancy|laziest|zero.*talent|less effort|threw this together|cannot mess|half asleep)/.test(low);
 }
 
 function enrichCaptionBody(body: string, type: InputType, index: number, title: string): string {
   let line = normalizeCaptionBody(body);
   if (!line) return line;
 
-  if (type === "recipe") {
-    const hasReaction = hasTokenFromPool(line, REACTION_TOKEN_POOL);
-    const hasSocial = hasTokenFromPool(line, SOCIAL_TOKEN_POOL);
-    if (!hasReaction && !hasSocial) {
-      const mixPool = ((titleSeed(title) + index) % 2 === 0 ? REACTION_TOKEN_POOL : SOCIAL_TOKEN_POOL);
-      const token = pickSeeded(mixPool, titleSeed(title) + index * 7);
-      line = `${line}, ${token}`;
-    }
-  }
-
-  return clampWordRange(line, 18, 28, ["for dinner tonight", "at my house", "this week"]);
+  if (type === "recipe") return line;
+  return clampWordRange(line, 14, 36, ["at my house", "this week"]);
 }
 
 function postProcessCaptionBodies(bodies: string[], type: InputType, title: string): string[] {
   const out: string[] = [];
   const seenStem = new Set<string>();
   const seenExact = new Set<string>();
-  const targetCount = type === "recipe" ? 5 : Math.min(5, Math.max(5, bodies.length));
+  const targetCount = 5;
   const available = bodies.map((body) => normalizeCaptionBody(body));
 
   if (type === "recipe") {
+    // Try to match each archetype from available captions first
     const usedIndices = new Set<number>();
     for (let angle = 0; angle < 5; angle++) {
       let picked = "";
@@ -423,12 +371,12 @@ function postProcessCaptionBodies(bodies: string[], type: InputType, title: stri
         }
       }
       if (pickedIndex >= 0) usedIndices.add(pickedIndex);
+      // Fall back to archetype pool if no match found
       let line = picked || buildRecipeViralAngle(angle, title, angle + 1);
-      line = enrichCaptionBody(line, type, angle, title);
       const key = normalizeCaptionBody(line).toLowerCase();
       const sKey = stemKey(line);
       if (seenExact.has(key) || seenStem.has(sKey)) {
-        line = enrichCaptionBody(buildRecipeViralAngle(angle, title, angle + 31), type, angle + 31, title);
+        line = buildRecipeViralAngle(angle, title, angle + 31);
       }
       const finalKey = normalizeCaptionBody(line).toLowerCase();
       const finalStem = stemKey(line);
@@ -450,7 +398,8 @@ function postProcessCaptionBodies(bodies: string[], type: InputType, title: stri
     const key = normalizeCaptionBody(line).toLowerCase();
     const sKey = stemKey(line);
     if (seenExact.has(key) || seenStem.has(sKey)) {
-      const opener = pickSeeded(DIVERSE_OPENER_POOL, titleSeed(title) + i * 13);
+      const dedupeOpeners = ["Honestly", "Real talk", "Okay but", "Listen", "Here is the thing"];
+      const opener = pickSeeded(dedupeOpeners, titleSeed(title) + i * 13);
       line = enrichCaptionBody(`${opener}: ${line}`.replace(/\s+/g, " "), type, i + 31, title);
     }
 
@@ -566,19 +515,19 @@ function inferRecipeAction(title: string): string {
 function houseStyleBodies(type: InputType): string[] {
   if (type === "recipe") {
     return [
-      buildRecipeViralAngle(0, "house", 1),
-      buildRecipeViralAngle(1, "house", 2),
-      buildRecipeViralAngle(2, "house", 3),
-      buildRecipeViralAngle(3, "house", 4),
-      buildRecipeViralAngle(4, "house", 5)
+      "Has anyone else tried this and been completely obsessed",
+      "My husband asked for this again the very next day",
+      "The secret ingredient is something you already have in your pantry",
+      "This is better than the restaurant version and I will die on that hill",
+      "One pan and 15 minutes is all this takes and it tastes like I cooked all day"
     ];
   }
   return [
-    "I had no idea this until now, and it instantly changed how I do this",
-    "Most people still get this wrong, and I was shocked by the real answer",
-    "I thought this was normal for years, but I learned something important today",
-    "This tip looked random at first, but the result made complete sense to me",
-    "I tried this once out of curiosity, and now I do it every single time"
+    "Am I the only one who did not know this until now",
+    "I showed this to 3 people and every single one bookmarked it",
+    "There is one detail most people miss that changes everything about this",
+    "Unpopular opinion but the simple version works way better",
+    "I tried this once out of curiosity and now I do it every single time"
   ];
 }
 
@@ -963,7 +912,7 @@ function coerceGenerated(
     });
 
   const captions = Array.isArray(src.caption_options) ? src.caption_options.filter(Boolean).slice(0, 5) : [];
-  const fallbackCaption = type === "recipe" ? `${title} is easier than it looks` : `${title} can be simpler than you think`;
+  const fallbackCaption = type === "recipe" ? `Has anyone else tried ${title} and been completely obsessed` : `Am I the only one who did not know about ${title} until now`;
   while (captions.length < 5) captions.push(fallbackCaption);
   const shortCaptionBodies = captions.map((c) => normalizeCaptionBody(c)).filter(Boolean);
   const houseBodies = houseStyleBodies(type).map((c) => normalizeCaptionBody(c)).filter(Boolean);
